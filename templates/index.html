@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌸 月经记录本 🌸</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #ffe6f2 0%, #fff0f5 50%, #ffdae6 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* 标题区域 */
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 10px 30px rgba(255, 182, 193, 0.4);
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '🌸';
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 40px;
+        }
+
+        .header::after {
+            content: '🌸';
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 40px;
+        }
+
+        h1 {
+            color: #ff6b9d;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(255, 182, 193, 0.5);
+        }
+
+        .subtitle {
+            color: #ff8fab;
+            margin-top: 10px;
+            font-size: 1.1em;
+        }
+
+        /* 添加记录卡片 */
+        .add-card {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(255, 182, 193, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .add-card h2 {
+            color: #ff6b9d;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ff8fab;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input, 
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 15px;
+            border: 3px solid #ffe6f2;
+            border-radius: 15px;
+            font-size: 16px;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #ff6b9d;
+            box-shadow: 0 0 15px rgba(255, 107, 157, 0.3);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 107, 157, 0.4);
+        }
+
+        /* 月份卡片 */
+        .month-section {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(255, 182, 193, 0.3);
+        }
+
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px dashed #ffe6f2;
+        }
+
+        .month-title {
+            color: #ff6b9d;
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        .month-stats {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat-badge {
+            background: linear-gradient(135deg, #ffe6f2, #fff0f5);
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: #ff6b9d;
+            font-size: 0.9em;
+        }
+
+        /* 记录卡片 */
+        .record-card {
+            background: linear-gradient(135deg, #fff5f8, #fff0f5);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 5px solid #ff6b9d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .record-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(255, 107, 157, 0.2);
+        }
+
+        .record-info {
+            flex: 1;
+        }
+
+        .record-dates {
+            font-size: 1.2em;
+            color: #ff6b9d;
+            font-weight: 500;
+        }
+
+        .record-details {
+            margin-top: 8px;
+            color: #888;
+            font-size: 0.95em;
+        }
+
+        .flow-indicator {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-right: 10px;
+        }
+
+        .flow-light { background: #fff0f5; color: #ff8fab; }
+        .flow-medium { background: #ffdae6; color: #ff6b9d; }
+        .flow-heavy { background: #ff6b9d; color: white; }
+
+        .btn-delete {
+            background: #ffe6f2;
+            color: #ff6b9d;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-delete:hover {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        /* 可视化区域 */
+        .chart-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: #fff5f8;
+            border-radius: 15px;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #ff8fab;
+        }
+
+        .empty-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .empty-text {
+            font-size: 1.3em;
+        }
+
+        /* 装饰元素 */
+        .decoration {
+            position: fixed;
+            font-size: 30px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .dec1 { top: 10%; left: 5%; }
+        .dec2 { top: 30%; right: 5%; }
+        .dec3 { bottom: 20%; left: 8%; }
+        .dec4 { bottom: 40%; right: 8%; }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8em; }
+            .month-header { flex-direction: column; gap: 15px; }
+            .record-card { flex-direction: column; gap: 15px; }
+        }
+
+        /* 动画 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* 花朵装饰 */
+        .flower {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #ff6b9d 30%, transparent 70%);
+            border-radius: 50%;
+            opacity: 0.2;
+        }
+    </style>
+</head>
+<body>
+    <div class="decoration dec1 floating">🌸</div>
+    <div class="decoration dec2 floating">🌺</div>
+    <div class="decoration dec3 floating">🌷</div>
+    <div class="decoration dec4 floating">🌹</div>
+
+    <div class="container">
+        <!-- 标题 -->
+        <div class="header">
+            <h1>🌸 月经记录本 🌸</h1>
+            <p class="subtitle">记录每一个月的温柔时光 💕</p>
+        </div>
+
+        <!-- 添加记录 -->
+        <div class="add-card">
+            <h2>📝 添加新记录</h2>
+            <form action="/add" method="POST">
+                <div class="form-group">
+                    <label>🌺 开始日期</label>
+                    <input type="date" name="start_date" required>
+                </div>
+                <div class="form-group">
+                    <label>🌸 结束日期</label>
+                    <input type="date" name="end_date" required>
+                </div>
+                <div class="form-group">
+                    <label>💧 经量</label>
+                    <select name="flow">
+                        <option value="light">🌸 少量</option>
+                        <option value="medium" selected>💕 中等</option>
+                        <option value="heavy">🔴 大量</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>📋 备注</label>
+                    <textarea name="notes" rows="3" placeholder="今天感觉怎么样？有没有什么不舒服？"></textarea>
+                </div>
+                <button type="submit" class="btn-submit">
+                    💖 保存记录
+                </button>
+            </form>
+        </div>
+
+        <!-- 记录列表 -->
+        <div id="records-container">
+            {% if not periods %}
+            <div class="empty-state">
+                <div class="empty-icon">🌸</div>
+                <p class="empty-text">还没有记录哦～<br>开始记录你的第一次吧！</p>
+            </div>
+            {% else %}
+                {% for month, records in periods.items()|sort(reverse=True) %}
+                <div class="month-section">
+                    <div class="month-header">
+                        <div class="month-title">📅 {{ month }}</div>
+                        <div class="month-stats">
+                            {% set total_days = records|length %}
+                            <span class="stat-badge">📊 {{ total_days }} 条记录</span>
+                        </div>
+                    </div>
+
+                    <!-- 可视化图表 -->
+                    <div class="chart-container">
+                        <canvas id="chart-{{ month }}"></canvas>
+                    </div>
+
+                    {% for record in records %}
+                    <div class="record-card">
+                        <div class="record-info">
+                            <div class="record-dates">
+                                {{ record.start_date }} ~ {{ record.end_date }}
+                            </div>
+                            <div class="record-details">
+                                <span class="flow-indicator flow-{{ record.flow }}">
+                                    {% if record.flow == 'light' %}🌸 少量
+                                    {% elif record.flow == 'medium' %}💕 中等
+                                    {% else %}🔴 大量{% endif %}
+                                </span>
+                                {% if record.notes %}
+                                <span>📝 {{ record.notes }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <a href="/delete/{{ month }}/{{ loop.index0 }}" class="btn-delete">🗑️ 删除</a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // 为每个月份创建图表
+        const months = {{ periods.keys()|list|tojson }};
+        
+        months.forEach(month => {
+            const ctx = document.getElementById('chart-' + month);
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['经期天数', '周期长度'],
+                        datasets: [{
+                            label: month + ' 统计',
+                            data: [5, 28], // 示例数据
+                            backgroundColor: [
+                                'rgba(255, 107, 157, 0.7)',
+                                'rgba(255, 143, 171, 0.7)'
+                            ],
+                            borderColor: [
+                                '#ff6b9d',
+                                '#ff8fab'
+                            ],
+                            borderWidth: 2,
+                            borderRadius: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#ff6b9d',
+                                    font: { size: 14 }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#ff8fab' },
+                                grid: { color: '#ffe6f2' }
+                            },
+                            x: {
+                                ticks: { color: '#ff8fab' },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

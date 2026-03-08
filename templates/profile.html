@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人信息 - 🌸 月经记录本</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #ffe6f3 0%, #fff0f6 50%, #ffe6f3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* 顶部导航 */
+        .header {
+            background: white;
+            border-radius: 25px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 30px;
+        }
+
+        .header h1 {
+            color: #ff6b9d;
+            font-size: 1.3em;
+        }
+
+        .btn-back {
+            background: #ffe6f3;
+            color: #ff6b9d;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Noto Sans SC', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .btn-back:hover {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #ff8fab;
+            background: #ffe6f3;
+            transition: all 0.3s;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .nav-tab:hover {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        .nav-tab.active {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        /* 个人信息卡片 */
+        .profile-card {
+            background: white;
+            border-radius: 25px;
+            padding: 35px;
+            box-shadow: 0 15px 40px rgba(255, 107, 157, 0.25);
+        }
+
+        /* 头像区域 */
+        .avatar-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 15px;
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #ff6b9d;
+            box-shadow: 0 8px 25px rgba(255, 107, 157, 0.3);
+        }
+
+        .avatar-placeholder {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffe6f3, #fff0f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            border: 4px solid #ff6b9d;
+            margin: 0 auto 15px;
+        }
+
+        .avatar-upload {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: #ff6b9d;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 3px solid white;
+            font-size: 18px;
+        }
+
+        .avatar-upload input {
+            display: none;
+        }
+
+        .avatar-tip {
+            color: #ff8fab;
+            font-size: 0.85em;
+        }
+
+        /* 表单区域 */
+        .form-section h2 {
+            color: #ff6b9d;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed #ffe6f3;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ff6b9d;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 14px;
+            border: 3px solid #ffe6f3;
+            border-radius: 15px;
+            font-size: 15px;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #ff6b9d;
+            box-shadow: 0 0 15px rgba(255, 107, 157, 0.3);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .info-display {
+            background: #fff5f8;
+            padding: 15px;
+            border-radius: 12px;
+            color: #666;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            width: 100%;
+            font-family: 'Noto Sans SC', sans-serif;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 107, 157, 0.4);
+        }
+
+        /* 消息提示 */
+        .flash {
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .flash-success {
+            background: #e6ffe6;
+            color: #44aa44;
+        }
+
+        .flash-error {
+            background: #ffe6e6;
+            color: #ff4444;
+        }
+
+        /* 装饰 */
+        .decoration {
+            position: fixed;
+            font-size: 35px;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .dec1 { top: 8%; left: 3%; }
+        .dec2 { top: 25%; right: 3%; }
+        .dec3 { bottom: 15%; left: 5%; }
+        .dec4 { bottom: 30%; right: 5%; }
+    </style>
+</head>
+<body>
+    <div class="decoration dec1">🌸</div>
+    <div class="decoration dec2">🌺</div>
+    <div class="decoration dec3">🌷</div>
+    <div class="decoration dec4">🌹</div>
+
+    <div class="container">
+        <!-- 顶部导航 -->
+        <div class="header">
+            <div class="header-left">
+                <span class="logo">👤</span>
+                <h1>个人信息</h1>
+            </div>
+            <div class="nav-tabs">
+                <a href="{{ url_for('index') }}" class="nav-tab">月经记录</a>
+                <a href="{{ url_for('study') }}" class="nav-tab">学习记录</a>
+                <a href="{{ url_for('work') }}" class="nav-tab">工作记录</a>
+                <a href="{{ url_for('all_calendar') }}" class="nav-tab">总日历</a>
+            </div>
+            <a href="{{ url_for('logout') }}"><button class="btn-back">登出</button></a>
+        </div>
+
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- 个人信息卡片 -->
+        <div class="profile-card">
+            <form method="POST" enctype="multipart/form-data">
+                <!-- 头像 -->
+                <div class="avatar-section">
+                    <div class="avatar-container">
+                        {% if user.avatar %}
+                        <img src="{{ url_for('avatars', filename=user.avatar) }}" class="avatar" alt="头像">
+                        {% else %}
+                        <div class="avatar-placeholder">👤</div>
+                        {% endif %}
+                        <label class="avatar-upload">
+                            📷
+                            <input type="file" name="avatar" accept="image/*" onchange="previewAvatar(this)">
+                        </label>
+                    </div>
+                    <p class="avatar-tip">点击摄像头图标上传头像</p>
+                </div>
+
+                <!-- 基本信息 -->
+                <div class="form-section">
+                    <h2>👤 基本信息</h2>
+                    
+                    <div class="form-group">
+                        <label>👤 用户名</label>
+                        <input type="text" value="{{ user.username }}" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📧 邮箱</label>
+                        <input type="email" name="email" value="{{ user.email or '' }}" placeholder="用于接收验证码">
+                    </div>
+
+                    <div class="form-group">
+                        <label>🌟 昵称</label>
+                        <input type="text" name="nickname" value="{{ user.nickname or '' }}" placeholder="给自己起个昵称吧">
+                    </div>
+
+                    <div class="form-group">
+                        <label>📱 手机号</label>
+                        <input type="tel" name="phone" value="{{ user.phone or '' }}" placeholder="请输入手机号">
+                    </div>
+
+                    <div class="form-group">
+                        <label>🎂 生日</label>
+                        <input type="date" name="birthday" value="{{ user.birthday or '' }}">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">💖 保存修改</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function previewAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const avatar = document.querySelector('.avatar');
+                    const placeholder = document.querySelector('.avatar-placeholder');
+                    
+                    if (avatar) {
+                        avatar.src = e.target.result;
+                    } else if (placeholder) {
+                        placeholder.innerHTML = `<img src="${e.target.result}" class="avatar" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid #ff6b9d;">`;
+                        placeholder.className = 'avatar-container';
+                        placeholder.style.margin = '0 auto 15px';
+                    }
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+</body>
+</html>

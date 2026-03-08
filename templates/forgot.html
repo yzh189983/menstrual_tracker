@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>忘记密码 - 🌸 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #ffe6f3 0%, #fff0f6 50%, #ffe6f3 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(255, 107, 157, 0.3);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 50px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            color: #ff6b9d;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #ff8fab;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ff6b9d;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border: 3px solid #ffe6f3;
+            border-radius: 15px;
+            font-size: 15px;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #ff6b9d;
+            box-shadow: 0 0 15px rgba(255, 107, 157, 0.3);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            width: 100%;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 107, 157, 0.4);
+        }
+
+        .btn-submit:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .link {
+            margin-top: 25px;
+            color: #ff8fab;
+        }
+
+        .link a {
+            color: #ff6b9d;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .link a:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            background: #ffe6e6;
+            color: #ff4444;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #e6ffe6;
+            color: #44aa44;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-group input {
+            flex: 1;
+        }
+
+        .btn-resend {
+            background: #ffe6f3;
+            color: #ff6b9d;
+            border: 2px solid #ff6b9d;
+            padding: 12px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-resend:hover {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        .btn-resend:disabled {
+            background: #eee;
+            border-color: #ccc;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .step-info {
+            background: #fff5f8;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            color: #ff6b9d;
+            font-size: 0.9em;
+        }
+
+        .decoration {
+            position: fixed;
+            font-size: 40px;
+            opacity: 0.2;
+            pointer-events: none;
+        }
+        .dec1 { top: 10%; left: 10%; }
+        .dec2 { top: 20%; right: 10%; }
+        .dec3 { bottom: 15%; left: 15%; }
+        .dec4 { bottom: 25%; right: 15%; }
+    </style>
+</head>
+<body>
+    <div class="decoration dec1">🌸</div>
+    <div class="decoration dec2">🌺</div>
+    <div class="decoration dec3">🌷</div>
+    <div class="decoration dec4">🌹</div>
+
+    <div class="container">
+        <div class="logo">🔐</div>
+        <h1>找回密码</h1>
+        <p class="subtitle">通过邮箱验证码重置密码 💕</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if not step or step == 'email' %}
+        <!-- 步骤1: 输入邮箱 -->
+        <form method="POST">
+            <input type="hidden" name="action" value="send_code">
+            <div class="form-group">
+                <label>📧 注册邮箱</label>
+                <input type="email" name="email" required placeholder="请输入您的注册邮箱">
+            </div>
+            <button type="submit" class="btn-submit">发送验证码</button>
+        </form>
+
+        {% elif step == 'verify' %}
+        <!-- 步骤2: 输入验证码 -->
+        <form method="POST">
+            <input type="hidden" name="action" value="verify_code">
+            <input type="hidden" name="email" value="{{ email }}">
+            <div class="step-info">
+                验证码已发送至：{{ email }}
+            </div>
+            <div class="form-group">
+                <label>🔢 验证码</label>
+                <div class="input-group">
+                    <input type="text" name="code" required placeholder="请输入6位验证码" maxlength="6">
+                    <button type="button" class="btn-resend" id="resendBtn" onclick="resendCode()">重新发送</button>
+                </div>
+            </div>
+            <button type="submit" class="btn-submit">验证</button>
+        </form>
+
+        {% elif step == 'reset' %}
+        <!-- 步骤3: 设置新密码 -->
+        <form method="POST">
+            <input type="hidden" name="action" value="reset">
+            <input type="hidden" name="email" value="{{ email }}">
+            <input type="hidden" name="code" value="verified">
+            <div class="step-info">
+                验证码验证成功！请设置新密码
+            </div>
+            <div class="form-group">
+                <label>🔑 新密码</label>
+                <input type="password" name="new_password" required placeholder="请输入新密码" minlength="6">
+            </div>
+            <div class="form-group">
+                <label>🔑 确认新密码</label>
+                <input type="password" name="confirm_password" required placeholder="请再次输入新密码" minlength="6">
+            </div>
+            <button type="submit" class="btn-submit">重置密码</button>
+        </form>
+        {% endif %}
+
+        <p class="link">
+            <a href="{{ url_for('login') }}">← 返回登录</a>
+        </p>
+    </div>
+
+    <script>
+        let countdown = 30;
+        let timer = null;
+
+        function resendCode() {
+            const btn = document.getElementById('resendBtn');
+            btn.disabled = true;
+            countdown = 30;
+            
+            // 重新提交表单
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.innerHTML = '<input type="hidden" name="action" value="send_code"><input type="hidden" name="email" value="{{ email }}">';
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // 页面加载时启动倒计时
+        window.onload = function() {
+            if (document.getElementById('resendBtn')) {
+                startCountdown();
+            }
+        };
+
+        function startCountdown() {
+            const btn = document.getElementById('resendBtn');
+            btn.disabled = true;
+            countdown = 30;
+            
+            timer = setInterval(function() {
+                countdown--;
+                btn.textContent = countdown + '秒后重发';
+                
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    btn.disabled = false;
+                    btn.textContent = '重新发送';
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

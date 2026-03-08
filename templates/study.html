@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习记录 - 📚 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 50%, #e6f7ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 25px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 30px rgba(24, 144, 255, 0.2);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 35px;
+        }
+
+        .header h1 {
+            color: #1890ff;
+            font-size: 1.5em;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-tab {
+            padding: 10px 25px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #8ec8ff;
+            background: #e6f7ff;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            background: #1890ff;
+            color: white;
+        }
+
+        .nav-tab.active {
+            background: #1890ff;
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-logout {
+            background: #e6f7ff;
+            color: #1890ff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-logout:hover {
+            background: #1890ff;
+            color: white;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 25px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .calendar-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(24, 144, 255, 0.2);
+        }
+
+        .calendar-card h2 {
+            color: #1890ff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(24, 144, 255, 0.2);
+        }
+
+        .form-card h3 {
+            color: #1890ff;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #1890ff;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 3px solid #e6f7ff;
+            border-radius: 15px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #1890ff;
+            box-shadow: 0 0 15px rgba(24, 144, 255, 0.3);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #1890ff, #40a9ff);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            width: 100%;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(24, 144, 255, 0.4);
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(24, 144, 255, 0.2);
+        }
+
+        .stats-card h3 {
+            color: #1890ff;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e6f7ff;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #8ec8ff;
+        }
+
+        .stat-value {
+            color: #1890ff;
+            font-weight: 500;
+        }
+
+        .records-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(24, 144, 255, 0.2);
+        }
+
+        .records-card h3 {
+            color: #1890ff;
+            margin-bottom: 20px;
+        }
+
+        .record-item {
+            padding: 15px;
+            border-radius: 15px;
+            background: #f0f9ff;
+            margin-bottom: 15px;
+        }
+
+        .record-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .record-date {
+            color: #1890ff;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .record-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #8ec8ff;
+            font-size: 0.9em;
+        }
+
+        .btn-delete {
+            background: #ff7875;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-delete:hover {
+            background: #ff4d4f;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+        }
+
+        .flash-success {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+
+        .flash-error {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+        }
+
+        .decoration {
+            position: fixed;
+            font-size: 40px;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .dec1 { top: 10%; left: 10%; }
+        .dec2 { top: 20%; right: 10%; }
+        .dec3 { bottom: 15%; left: 15%; }
+        .dec4 { bottom: 25%; right: 15%; }
+
+        .empty-state {
+            text-align: center;
+            color: #8ec8ff;
+            padding: 40px;
+        }
+
+        #studyChart {
+            margin-top: 20px;
+            max-height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="decoration dec1">📚</div>
+    <div class="decoration dec2">📖</div>
+    <div class="decoration dec3">✏️</div>
+    <div class="decoration dec4">🎓</div>
+
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <span class="logo">📚</span>
+                <h1>学习记录</h1>
+            </div>
+            <div class="nav-tabs">
+                <a href="{{ url_for('index') }}" class="nav-tab">月经记录</a>
+                <a href="{{ url_for('study') }}" class="nav-tab {% if request.endpoint == 'study' %}active{% endif %}">学习记录</a>
+                <a href="{{ url_for('work') }}" class="nav-tab">工作记录</a>
+                <a href="{{ url_for('all_calendar') }}" class="nav-tab">总日历</a>
+            </div>
+            <div class="user-info">
+                <a href="{{ url_for('profile') }}" style="text-decoration: none;">
+                    <button class="btn-logout">👤 个人信息</button>
+                </a>
+                <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="main-content">
+            <div class="calendar-card">
+                <h2>📅 日历视图</h2>
+                <div id="calendar"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="form-card">
+                    <h3>➕ 添加学习记录</h3>
+                    <form method="POST" action="{{ url_for('add_study') }}">
+                        <div class="form-group">
+                            <label>📅 日期</label>
+                            <input type="date" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>📖 科目</label>
+                            <input type="text" name="subject" placeholder="如：数学、英语、编程" required>
+                        </div>
+                        <div class="form-group">
+                            <label>⏱️ 学习时长（分钟）</label>
+                            <input type="number" name="duration" placeholder="如：60" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>📝 学习计划</label>
+                            <textarea name="plan" placeholder="今天要学习的内容..." rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>💭 备注</label>
+                            <textarea name="notes" placeholder="额外备注..." rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn-submit">💖 添加记录</button>
+                    </form>
+                </div>
+
+                <div class="stats-card">
+                    <h3>📊 统计</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">总记录数</span>
+                        <span class="stat-value" id="total-records">{{ records|length }} 条</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">总学习时长</span>
+                        <span class="stat-value" id="total-hours">{% if records|length > 0 %}{{ records|sum(attribute='duration') }} 分钟{% else %}0 分钟{% endif %}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">平均时长</span>
+                        <span class="stat-value" id="avg-duration">{% if records|length > 0 %}{{ (records|sum(attribute='duration') / records|length)|round(1) }} 分钟{% else %}0 分钟{% endif %}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="records-card" style="margin-top: 25px;">
+            <h3>📋 历史记录</h3>
+            {% if records %}
+                {% for record in records|reverse %}
+                <div class="record-item">
+                    <div class="record-date">
+                        📅 {{ record.date.strftime('%Y-%m-%d') }} 
+                        <span style="color: #1890ff; margin-left: 10px;">{{ record.subject }}</span>
+                    </div>
+                    <div class="record-details">
+                        <span>⏱️ {{ record.duration }} 分钟</span>
+                        <a href="{{ url_for('delete_study', record_id=record.id) }}">
+                            <button class="btn-delete">删除</button>
+                        </a>
+                    </div>
+                    {% if record.plan %}
+                    <div style="color: #8ec8ff; font-size: 0.9em; margin-top: 8px;">
+                        📝 计划：{{ record.plan }}
+                    </div>
+                    {% endif %}
+                    {% if record.notes %}
+                    <div style="color: #ff9c6e; font-size: 0.9em; margin-top: 5px;">
+                        💭 备注：{{ record.notes }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>还没有学习记录哦～</p>
+                    <p>开始记录你的学习生活吧！</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const studyData = [
+            {% for record in records %}
+            {
+                id: {{ record.id }},
+                title: '{{ record.subject }} - {{ record.duration }}分钟',
+                start: '{{ record.date }}',
+                duration: {{ record.duration }},
+            },
+            {% endfor %}
+        ];
+
+        function getSubjectColor(subject) {
+            const colors = {
+                '数学': { bg: '#91d5ff', border: '#1890ff' },
+                '英语': { bg: '#ffadd2', border: '#eb2f96' },
+                '语文': { bg: '#ffec3d', border: '#faad14' },
+                '物理': { bg: '#b7eb8f', border: '#52c41a' },
+                '化学': { bg: '#d3adf7', bound: '#722ed1' },
+                '生物': { bg: '#ffbb96', border: '#fa8c16' },
+                '历史': { bg: '#ffd666', border: '#faad14' },
+                '地理': { bg: '#87e8de', border: '#13c2c2' },
+                '编程': { bg: '#73d13d', border: '#52c41a' },
+            };
+            return colors[subject] || { bg: '#91d5ff', border: '#1890ff' };
+        }
+
+        const studyEvents = studyData.map(r => {
+            const color = getSubjectColor(r.title.split(' - ')[0]);
+            return {
+                id: r.id,
+                title: r.title,
+                start: r.start,
+                backgroundColor: color.bg,
+                borderColor: color.border,
+            };
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listMonth'
+                },
+                events: studyEvents,
+                eventDisplay: 'block',
+                height: 'auto',
+                locale: 'zh-cn',
+                buttonText: {
+                    today: '今天',
+                    month: '月',
+                    list: '列表'
+                }
+            });
+            calendar.render();
+        });
+    </script>
+</body>
+</html>

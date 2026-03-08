@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作记录 - 📚 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #fff7e6 0%, #fffaf0 50%, #fff7e6 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 25px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 30px rgba(255, 153, 0, 0.2);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 35px;
+        }
+
+        .header h1 {
+            color: #fa8c16;
+            font-size: 1.5em;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-tab {
+            padding: 10px 25px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #ffcd77;
+            background: #fff7e6;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            background: #fa8c16;
+            color: white;
+        }
+
+        .nav-tab.active {
+            background: #fa8c16;
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-logout {
+            background: #fff7e6;
+            color: #fa8c16;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-logout:hover {
+            background: #fa8c16;
+            color: white;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 25px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .calendar-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(255, 153, 0, 0.2);
+        }
+
+        .calendar-card h2 {
+            color: #fa8c16;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(255, 153, 0, 0.2);
+        }
+
+        .form-card h3 {
+            color: #fa8c16;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #fa8c16;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 3px solid #fff7e6;
+            border-radius: 15px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #fa8c16;
+            box-shadow: 0 0 15px rgba(255, 153, 0, 0.3);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #fa8c16, #ffc069);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            width: 100%;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 153, 0, 0.4);
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(255, 153, 0, 0.2);
+        }
+
+        .stats-card h3 {
+            color: #fa8c16;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #fff7e6;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #ffcd77;
+        }
+
+        .stat-value {
+            color: #fa8c16;
+            font-weight: 500;
+        }
+
+        .records-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(255, 153, 0, 0.2);
+        }
+
+        .records-card h3 {
+            color: #fa8c16;
+            margin-bottom: 20px;
+        }
+
+        .record-item {
+            padding: 15px;
+            border-radius: 15px;
+            background: #fff7e6;
+            margin-bottom: 15px;
+        }
+
+        .record-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .record-date {
+            color: #fa8c16;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .record-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #ffcd77;
+            font-size: 0.9em;
+        }
+
+        .btn-delete {
+            background: #ff7875;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-delete:hover {
+            background: #ff4d4f;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+        }
+
+        .flash-success {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+
+        .flash-error {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+        }
+
+        .decoration {
+            position: fixed;
+            font-size: 40px;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .dec1 { top: 10%; left: 10%; }
+        .dec2 { top: 20%; right: 10%; }
+        .dec3 { bottom: 15%; left: 15%; }
+        .dec4 { bottom: 25%; right: 15%; }
+
+        .empty-state {
+            text-align: center;
+            color: #ffcd77;
+            padding: 40px;
+        }
+
+        .time-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="decoration dec1">💼</div>
+    <div class="decoration dec2">📋</div>
+    <div class="decoration dec3">⏰</div>
+    <div class="decoration dec4">🏢</div>
+
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <span class="logo">💼</span>
+                <h1>工作记录</h1>
+            </div>
+            <div class="nav-tabs">
+                <a href="{{ url_for('index') }}" class="nav-tab">月经记录</a>
+                <a href="{{ url_for('study') }}" class="nav-tab">学习记录</a>
+                <a href="{{ url_for('work') }}" class="nav-tab {% if request.endpoint == 'work' %}active{% endif %}">工作记录</a>
+                <a href="{{ url_for('all_calendar') }}" class="nav-tab">总日历</a>
+            </div>
+            <div class="user-info">
+                <a href="{{ url_for('profile') }}" style="text-decoration: none;">
+                    <button class="btn-logout">👤 个人信息</button>
+                </a>
+                <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="main-content">
+            <div class="calendar-card">
+                <h2>📅 日历视图</h2>
+                <div id="calendar"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="form-card">
+                    <h3>➕ 添加工作记录</h3>
+                    <form method="POST" action="{{ url_for('add_work') }}">
+                        <div class="form-group">
+                            <label>📅 日期</label>
+                            <input type="date" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>📋 工作任务</label>
+                            <input type="text" name="task" placeholder="今天完成了什么工作？" required>
+                        </div>
+                        <div class="form-group">
+                            <label>⏱️ 任务时长（分钟）</label>
+                            <input type="number" name="task_duration" placeholder="如：120" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>🕐 上下班时间</label>
+                            <div class="time-row">
+                                <div>
+                                    <input type="time" name="work_start" placeholder="上班时间">
+                                    <span style="font-size: 0.8em; color: #ffcd77;">上班</span>
+                                </div>
+                                <div>
+                                    <input type="time" name="work_end" placeholder="下班时间">
+                                    <span style="font-size: 0.8em; color: #ffcd77;">下班</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>🌙 加班时长（分钟）</label>
+                            <input type="number" name="overtime" placeholder="如：60" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>💭 备注</label>
+                            <textarea name="notes" placeholder="额外备注..." rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn-submit">💖 添加记录</button>
+                    </form>
+                </div>
+
+                <div class="stats-card">
+                    <h3>📊 统计</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">总记录数</span>
+                        <span class="stat-value">{{ records|length }} 条</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">总任务时长</span>
+                        <span class="stat-value">{% if records|length > 0 %}{{ records|sum(attribute='task_duration') }} 分钟{% else %}0 分钟{% endif %}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">总加班时长</span>
+                        <span class="stat-value">{% if records|length > 0 %}{{ records|sum(attribute='overtime') }} 分钟{% else %}0 分钟{% endif %}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="records-card" style="margin-top: 25px;">
+            <h3>📋 历史记录</h3>
+            {% if records %}
+                {% for record in records|reverse %}
+                <div class="record-item">
+                    <div class="record-date">
+                        📅 {{ record.date.strftime('%Y-%m-%d') }} 
+                        <span style="color: #fa8c16; margin-left: 10px;">{{ record.task }}</span>
+                    </div>
+                    <div class="record-details">
+                        <span>
+                            ⏱️ 任务: {{ record.task_duration }}分钟
+                            {% if record.work_start and record.work_end %}
+                            | 🕐 {{ record.work_start.strftime('%H:%M') }}-{{ record.work_end.strftime('%H:%M') }}
+                            {% endif %}
+                            {% if record.overtime > 0 %}
+                            | 🌙 加班: {{ record.overtime }}分钟
+                            {% endif %}
+                        </span>
+                        <a href="{{ url_for('delete_work', record_id=record.id) }}">
+                            <button class="btn-delete">删除</button>
+                        </a>
+                    </div>
+                    {% if record.notes %}
+                    <div style="color: #ff9c6e; font-size: 0.9em; margin-top: 5px;">
+                        💭 备注：{{ record.notes }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>还没有工作记录哦～</p>
+                    <p>开始记录你的工作日常吧！</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const workData = [
+            {% for record in records %}
+            {
+                id: {{ record.id }},
+                title: '{{ record.task }}',
+                start: '{{ record.date }}',
+                task_duration: {{ record.task_duration }},
+            },
+            {% endfor %}
+        ];
+
+        const workEvents = workData.map(r => {
+            return {
+                id: r.id,
+                title: r.title + ' (' + r.task_duration + '分钟)',
+                start: r.start,
+                backgroundColor: '#ffc069',
+                borderColor: '#fa8c16',
+            };
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listMonth'
+                },
+                events: workEvents,
+                eventDisplay: 'block',
+                height: 'auto',
+                locale: 'zh-cn',
+                buttonText: {
+                    today: '今天',
+                    month: '月',
+                    list: '列表'
+                }
+            });
+            calendar.render();
+        });
+    </script>
+</body>
+</html>

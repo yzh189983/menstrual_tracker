@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>总日历 - 📚 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #f9f0ff 0%, #faf5ff 50%, #f9f0ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 25px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 30px rgba(155, 89, 182, 0.2);
+            margin-bottom: 25px;
+;
+            justify-content: space-between;
+            display: flex            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 35px;
+        }
+
+        .header h1 {
+            color: #9b59b6;
+            font-size: 1.5em;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-tab {
+            padding: 10px 25px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #d2b4de;
+            background: #f5eef8;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            background: #9b59b6;
+            color: white;
+        }
+
+        .nav-tab.active {
+            background: #9b59b6;
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-logout {
+            background: #f5eef8;
+            color: #9b59b6;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-logout:hover {
+            background: #9b59b6;
+            color: white;
+        }
+
+        .legend-card {
+            background: white;
+            border-radius: 25px;
+            padding: 20px 25px;
+            box-shadow: 0 10px 30px rgba(155, 89, 182, 0.2);
+            margin-bottom: 25px;
+        }
+
+        .legend-card h3 {
+            color: #9b59b6;
+            margin-bottom: 15px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.period { background: #ff6b9d; }
+        .legend-dot.study { background: #1890ff; }
+        .legend-dot.work { background: #fa8c16; }
+
+        .calendar-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(155, 89, 182, 0.2);
+        }
+
+        .calendar-card h2 {
+            color: #9b59b6;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .decoration {
+            position: fixed;
+            font-size: 40px;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .dec1 { top: 10%; left: 10%; }
+        .dec2 { top: 20%; right: 10%; }
+        .dec3 { bottom: 15%; left: 15%; }
+        .dec4 { bottom: 25%; right: 15%; }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .stat-card.period { border-top: 4px solid #ff6b9d; }
+        .stat-card.study { border-top: 4px solid #1890ff; }
+        .stat-card.work { border-top: 4px solid #fa8c16; }
+
+        .stat-card h4 {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .stat-num {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .stat-card.period .stat-num { color: #ff6b9d; }
+        .stat-card.study .stat-num { color: #1890ff; }
+        .stat-card.work .stat-num { color: #fa8c16; }
+    </style>
+</head>
+<body>
+    <div class="decoration dec1">📅</div>
+    <div class="decoration dec2">🌸</div>
+    <div class="decoration dec3">📚</div>
+    <div class="decoration dec4">💼</div>
+
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <span class="logo">📅</span>
+                <h1>总日历</h1>
+            </div>
+            <div class="nav-tabs">
+                <a href="{{ url_for('index') }}" class="nav-tab">月经记录</a>
+                <a href="{{ url_for('study') }}" class="nav-tab">学习记录</a>
+                <a href="{{ url_for('work') }}" class="nav-tab">工作记录</a>
+                <a href="{{ url_for('all_calendar') }}" class="nav-tab {% if request.endpoint == 'all_calendar' %}active{% endif %}">总日历</a>
+            </div>
+            <div class="user-info">
+                <a href="{{ url_for('profile') }}" style="text-decoration: none;">
+                    <button class="btn-logout">👤 个人信息</button>
+                </a>
+                <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
+            </div>
+        </div>
+
+        <div class="legend-card">
+            <h3>🎨 图例说明</h3>
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-dot period"></span>
+                    <span>月经记录</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot study"></span>
+                    <span>学习记录</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot work"></span>
+                    <span>工作记录</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="calendar-card">
+            <h2>📅 所有记录</h2>
+            <div id="calendar"></div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card period">
+                <h4>🌸 月经记录</h4>
+                <div class="stat-num">{{ periods|length }}</div>
+                <div style="color: #999; font-size: 0.8em;">条记录</div>
+            </div>
+            <div class="stat-card study">
+                <h4>📚 学习记录</h4>
+                <div class="stat-num">{{ study_records|length }}</div>
+                <div style="color: #999; font-size: 0.8em;">条记录</div>
+            </div>
+            <div class="stat-card work">
+                <h4>💼 工作记录</h4>
+                <div class="stat-num">{{ work_records|length }}</div>
+                <div style="color: #999; font-size: 0.8em;">条记录</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 月经记录
+        const periodData = [
+            {% for period in periods %}
+            {
+                id: 'period_{{ period.id }}',
+                title: '🌸 经期 ({{ ((period.end_date - period.start_date).days + 1) }}天)',
+                start: '{{ period.start_date }}',
+                end: '{{ (period.end_date + timedelta(days=1)) }}',
+                backgroundColor: '#ff6b9d',
+                borderColor: '#ff6b9d',
+                type: 'period'
+            },
+            {% endfor %}
+        ];
+
+        // 学习记录
+        const studyData = [
+            {% for record in study_records %}
+            {
+                id: 'study_{{ record.id }}',
+                title: '📚 {{ record.subject }} ({{ record.duration }}分钟)',
+                start: '{{ record.date }}',
+                backgroundColor: '#1890ff',
+                borderColor: '#1890ff',
+                type: 'study'
+            },
+            {% endfor %}
+        ];
+
+        // 工作记录
+        const workData = [
+            {% for record in work_records %}
+            {
+                id: 'work_{{ record.id }}',
+                title: '💼 {{ record.task }}',
+                start: '{{ record.date }}',
+                backgroundColor: '#fa8c16',
+                borderColor: '#fa8c16',
+                type: 'work'
+            },
+            {% endfor %}
+        ];
+
+        // 合并所有事件
+        const allEvents = [...periodData, ...studyData, ...workData];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listWeek'
+                },
+                events: allEvents,
+                eventDisplay: 'block',
+                height: 'auto',
+                locale: 'zh-cn',
+                buttonText: {
+                    today: '今天',
+                    month: '月',
+                    list: '列表'
+                },
+                eventClick: function(info) {
+                    alert('类型: ' + info.event.title);
+                }
+            });
+            calendar.render();
+        });
+    </script>
+</body>
+</html>

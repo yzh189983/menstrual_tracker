@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌸 月经记录本</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #ffe6f3 0%, #fff0f6 50%, #ffe6f3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* 顶部导航 */
+        .header {
+            background: white;
+            border-radius: 25px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 35px;
+        }
+
+        .header h1 {
+            color: #ff6b9d;
+            font-size: 1.5em;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-tab {
+            padding: 10px 25px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #ff8fab;
+            background: #ffe6f3;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        .nav-tab.active {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .username {
+            color: #ff6b9d;
+            font-weight: 500;
+        }
+
+        .btn-logout {
+            background: #ffe6f3;
+            color: #ff6b9d;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-logout:hover {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        /* 主体布局 */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 25px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 日历卡片 */
+        .calendar-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2);
+        }
+
+        .calendar-card h2 {
+            color: #ff6b9d;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* FullCalendar 定制 */
+        .fc {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .fc .fc-toolbar-title {
+            color: #ff6b9d;
+            font-size: 1.3em !important;
+        }
+
+        .fc .fc-button {
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab) !important;
+            border: none !important;
+            border-radius: 10px !important;
+        }
+
+        .fc .fc-button:hover {
+            opacity: 0.9;
+        }
+
+        .fc .fc-day-today {
+            background: #fff0f6 !important;
+        }
+
+        .fc .fc-daygrid-day-number {
+            color: #666;
+        }
+
+        .fc-event {
+            border-radius: 8px !important;
+            border: none !important;
+            padding: 3px 8px !important;
+            font-size: 0.85em;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* 添加记录卡片 */
+        .add-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2);
+        }
+
+        .add-card h3 {
+            color: #ff6b9d;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ff8fab;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .form-group input, 
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 3px solid #ffe6f3;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #ff6b9d;
+            box-shadow: 0 0 10px rgba(255, 107, 157, 0.2);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 20px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            width: 100%;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 157, 0.3);
+        }
+
+        /* 统计卡片 */
+        .stats-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2);
+        }
+
+        .stats-card h3 {
+            color: #ff6b9d;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px dashed #ffe6f3;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #888;
+        }
+
+        .stat-value {
+            color: #ff6b9d;
+            font-weight: 500;
+        }
+
+        /* 记录列表 */
+        .records-card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .records-card h3 {
+            color: #ff6b9d;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .record-item {
+            background: #fff5f8;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #ff6b9d;
+        }
+
+        .record-dates {
+            color: #ff6b9d;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .record-details {
+            font-size: 0.85em;
+            color: #888;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-delete {
+            background: #ffe6e6;
+            color: #ff4444;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.3s;
+        }
+
+        .btn-delete:hover {
+            background: #ff4444;
+            color: white;
+        }
+
+        /* 图例 */
+        .legend {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #ffe6f3;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85em;
+            color: #888;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-light { background: #ffb6d9; }
+        .dot-medium { background: #ff6b9d; }
+        .dot-heavy { background: #e63950; }
+
+        /* 消息提示 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .flash-success {
+            background: #e6ffe6;
+            color: #44aa44;
+        }
+
+        .flash-error {
+            background: #ffe6e6;
+            color: #ff4444;
+        }
+
+        /* 装饰 */
+        .decoration {
+            position: fixed;
+            font-size: 35px;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .dec1 { top: 8%; left: 3%; }
+        .dec2 { top: 25%; right: 3%; }
+        .dec3 { bottom: 15%; left: 5%; }
+        .dec4 { bottom: 30%; right: 5%; }
+    </style>
+</head>
+<body>
+    <div class="decoration dec1">🌸</div>
+    <div class="decoration dec2">🌺</div>
+    <div class="decoration dec3">🌷</div>
+    <div class="decoration dec4">🌹</div>
+
+    <div class="container">
+        <!-- 顶部导航 -->
+        <div class="header">
+            <div class="header-left">
+                <span class="logo">🌸</span>
+                <h1>月经记录</h1>
+            </div>
+            <div class="nav-tabs">
+                <a href="{{ url_for('index') }}" class="nav-tab {% if request.endpoint == 'index' %}active{% endif %}">月经记录</a>
+                <a href="{{ url_for('study') }}" class="nav-tab">学习记录</a>
+                <a href="{{ url_for('work') }}" class="nav-tab">工作记录</a>
+                <a href="{{ url_for('all_calendar') }}" class="nav-tab">总日历</a>
+            </div>
+            <div class="user-info">
+                <a href="{{ url_for('profile') }}" style="text-decoration: none;">
+                    <button class="btn-logout">👤 个人信息</button>
+                </a>
+                <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
+            </div>
+        </div>
+
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- 主体内容 -->
+        <div class="main-content">
+            <!-- 日历 -->
+            <div class="calendar-card">
+                <h2>📅 日历视图</h2>
+                <div id="calendar"></div>
+                
+                <!-- 图例 -->
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-dot dot-light"></span>
+                        <span>少量</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot dot-medium"></span>
+                        <span>中等</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot dot-heavy"></span>
+                        <span>大量</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <!-- 添加记录 -->
+                <div class="add-card">
+                    <h3>📝 添加记录</h3>
+                    <form action="{{ url_for('add_period') }}" method="POST">
+                        <div class="form-group">
+                            <label>🌺 开始日期</label>
+                            <input type="date" name="start_date" id="start_date" required onchange="updateEndDate()">
+                        </div>
+                        <div class="form-group">
+                            <label>🌸 结束日期</label>
+                            <input type="date" name="end_date" id="end_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>💧 经量</label>
+                            <select name="flow">
+                                <option value="light">🌸 少量</option>
+                                <option value="medium" selected>💕 中等</option>
+                                <option value="heavy">🔴 大量</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>📋 备注</label>
+                            <textarea name="notes" rows="2" placeholder="今天感觉怎么样？"></textarea>
+                        </div>
+                        <button type="submit" class="btn-submit">💖 保存</button>
+                    </form>
+                </div>
+
+                <!-- 统计 -->
+                <div class="stats-card">
+                    <h3>📊 本月统计</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">记录次数</span>
+                        <span class="stat-value" id="total-records">{{ periods|length }} 次</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">平均经期</span>
+                        <span class="stat-value" id="avg-days">- 天</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">最近一次</span>
+                        <span class="stat-value" id="last-period">-</span>
+                    </div>
+                </div>
+
+                <!-- 记录列表 -->
+                <div class="records-card">
+                    <h3>📋 历史记录</h3>
+                    {% if periods %}
+                        {% for period in periods|reverse %}
+                        <div class="record-item">
+                            <div class="record-dates">
+                                {{ period.start_date.strftime('%Y-%m-%d') }} ~ {{ period.end_date.strftime('%Y-%m-%d') }}
+                                <span style="font-size: 0.85em; color: #ff6b9d; margin-left: 10px;">
+                                    ({{ ((period.end_date - period.start_date).days + 1) }}天)
+                                </span>
+                            </div>
+                            <div class="record-details">
+                                <span>
+                                    {% if period.flow == 'light' %}🌸 少量
+                                    {% elif period.flow == 'medium' %}💕 中等
+                                    {% else %}🔴 大量{% endif %}
+                                </span>
+                                <a href="{{ url_for('delete_period', period_id=period.id) }}">
+                                    <button class="btn-delete">删除</button>
+                                </a>
+                            </div>
+                            {% if period.notes %}
+                            <div style="color: #ff8fab; font-size: 0.85em; margin-top: 8px;">
+                                📝 备注：{{ period.notes }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: #ff8fab; text-align: center; padding: 20px;">还没有记录哦～</p>
+                    {% endif %}
+                </div>
+
+                <!-- 可视化图表 -->
+                <div class="stats-card" style="margin-top: 25px;">
+                    <h3>📈 经期趋势</h3>
+                    <canvas id="periodChart" height="200"></canvas>
+                    <div id="gap-info" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ffe6f3;">
+                        <!-- 间隔信息 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 更新结束日期的年月与开始日期一致
+        function updateEndDate() {
+            const startDateInput = document.getElementById('start_date');
+            const endDateInput = document.getElementById('end_date');
+            
+            if (startDateInput.value && endDateInput.value) {
+                const startDate = new Date(startDateInput.value);
+                const endDate = new Date(endDateInput.value);
+                
+                // 如果结束日期的年月与开始日期不一致，则更新
+                if (startDate.getFullYear() !== endDate.getFullYear() || 
+                    startDate.getMonth() !== endDate.getMonth()) {
+                    // 保持结束日期的日，但更新年月
+                    const day = endDate.getDate();
+                    const newEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); // 该月最后一天
+                    const newDay = Math.min(day, newEndDate.getDate());
+                    
+                    const year = startDate.getFullYear();
+                    const month = String(startDate.getMonth() + 1).padStart(2, '0');
+                    const newDayStr = String(newDay).padStart(2, '0');
+                    
+                    endDateInput.value = `${year}-${month}-${newDayStr}`;
+                }
+            } else if (startDateInput.value && !endDateInput.value) {
+                // 如果结束日期为空，默认设置为与开始日期相同
+                endDateInput.value = startDateInput.value;
+            }
+        }
+        
+        // 将后端数据转换为日历事件
+        const periodData = [
+            {% for period in periods %}
+            {
+                id: {{ period.id }},
+                start: '{{ period.start_date }}',
+                end: '{{ (period.end_date + timedelta(days=1)) }}',
+                flow: '{{ period.flow }}',
+            },
+            {% endfor %}
+        ];
+
+        // 根据经量获取颜色
+        function getFlowColor(flow) {
+            if (flow === 'light') {
+                return { bg: '#ffb6d9', border: '#ff8fab', title: '🌸 少量' };
+            } else if (flow === 'medium') {
+                return { bg: '#ff6b9d', border: '#ff6b9d', title: '💕 中等' };
+            } else {
+                return { bg: '#e63950', border: '#c92a42', title: '🔴 大量' };
+            }
+        }
+
+        // 构建事件列表
+        const periodEvents = periodData.map(p => {
+            const color = getFlowColor(p.flow);
+            return {
+                id: p.id,
+                title: color.title,
+                start: p.start,
+                end: p.end,
+                backgroundColor: color.bg,
+                borderColor: color.border,
+            };
+        });
+
+        // 初始化日历
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listMonth'
+                },
+                events: periodEvents,
+                eventDisplay: 'block',
+                height: 'auto',
+                locale: 'zh-cn',
+                buttonText: {
+                    today: '今天',
+                    month: '月',
+                    list: '列表'
+                },
+                eventClick: function(info) {
+                    if(confirm('确定要删除这条记录吗？')) {
+                        window.location.href = '/delete/' + info.event.id;
+                    }
+                }
+            });
+            calendar.render();
+
+            // 更新统计
+            updateStats();
+        });
+
+        function updateStats() {
+            const records = {{ periods|length }};
+            if (records > 0) {
+                // 计算平均天数
+                let totalDays = 0;
+                const periodStarts = [{% for period in periods %}'{{ period.start_date }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+                const periodEnds = [{% for period in periods %}'{{ period.end_date }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+                
+                for (let i = 0; i < periodStarts.length; i++) {
+                    const start = new Date(periodStarts[i]);
+                    const end = new Date(periodEnds[i]);
+                    totalDays += (end - start) / (1000 * 60 * 60 * 24) + 1;
+                }
+                const avg = (totalDays / records).toFixed(1);
+                document.getElementById('avg-days').textContent = avg + ' 天';
+
+                // 最近一次
+                const lastPeriod = periodStarts[periodStarts.length - 1];
+                document.getElementById('last-period').textContent = lastPeriod;
+            }
+
+            // 绘制可视化图表
+            renderPeriodChart();
+        }
+
+        // 绘制经期趋势图
+        function renderPeriodChart() {
+            const ctx = document.getElementById('periodChart');
+            if (!ctx) return;
+
+            const periodData2 = [
+                {% for period in periods|reverse %}
+                {
+                    start: '{{ period.start_date }}',
+                    end: '{{ period.end_date }}',
+                    flow: '{{ period.flow }}',
+                },
+                {% endfor %}
+            ];
+
+            if (periodData2.length === 0) return;
+
+            // 计算每个经期的时长和间隔
+            const durations = [];
+            const labels = [];
+            const gapData = [];
+            const gapLabels = [];
+
+            for (let i = 0; i < periodData2.length; i++) {
+                const start = new Date(periodData2[i].start);
+                const end = new Date(periodData2[i].end);
+                const duration = (end - start) / (1000 * 60 * 60 * 24) + 1;
+                durations.push(duration);
+                labels.push(periodData2[i].start.substring(5)); // 月-日
+
+                // 计算与前一次的间隔
+                if (i > 0) {
+                    const prevStart = new Date(periodData2[i-1].start);
+                    const gap = (start - prevStart) / (1000 * 60 * 60 * 24);
+                    gapData.push(gap);
+                    gapLabels.push(periodData2[i].start.substring(5));
+                }
+            }
+
+            // 创建图表
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '经期天数',
+                            data: durations,
+                            backgroundColor: 'rgba(255, 107, 157, 0.7)',
+                            borderColor: '#ff6b9d',
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: '间隔天数',
+                            data: gapData.length > 0 ? [null, ...gapData] : [],
+                            type: 'line',
+                            borderColor: '#ff8fab',
+                            backgroundColor: 'rgba(255, 143, 171, 0.3)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y1',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#ff6b9d',
+                                font: { size: 12 }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '天数',
+                                color: '#ff6b9d'
+                            },
+                            ticks: { color: '#ff8fab' },
+                            grid: { color: '#ffe6f3' }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '间隔',
+                                color: '#ff8fab'
+                            },
+                            ticks: { color: '#ff8fab' },
+                            grid: { display: false }
+                        },
+                        x: {
+                            ticks: { color: '#ff8fab' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // 显示间隔信息
+            const gapInfoDiv = document.getElementById('gap-info');
+            if (gapData.length > 0) {
+                const avgGap = (gapData.reduce((a, b) => a + b, 0) / gapData.length).toFixed(1);
+                gapInfoDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                        <span style="color: #888;">平均间隔</span>
+                        <span style="color: #ff6b9d; font-weight: 500;">${avgGap} 天</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                        <span style="color: #888;">最长间隔</span>
+                        <span style="color: #ff6b9d; font-weight: 500;">${Math.max(...gapData)} 天</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                        <span style="color: #888;">最短间隔</span>
+                        <span style="color: #ff6b9d; font-weight: 500;">${Math.min(...gapData)} 天</span>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
