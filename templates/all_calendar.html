@@ -536,7 +536,8 @@
                 date: '{{ record.date }}',
                 subject: '{{ record.subject }}',
                 duration: '{{ record.duration }}',
-                content: '{{ record.content if record.content else "无" }}'
+                plan: '{{ record.plan if record.plan else "无" }}',
+                notes: '{{ record.notes if record.notes else "无" }}'
             },
             {% endfor %}
         };
@@ -548,9 +549,12 @@
                 type: 'work',
                 icon: '💼',
                 date: '{{ record.date }}',
-                task: '{{ record.task }}',
-                hours: '{{ record.hours }}',
-                description: '{{ record.description if record.description else "无" }}'
+                task: '{{ record.task if record.task else "无" }}',
+                task_duration: '{{ record.task_duration if record.task_duration else 0 }}',
+                work_start: '{{ record.work_start if record.work_start else "未设置" }}',
+                work_end: '{{ record.work_end if record.work_end else "未设置" }}',
+                overtime: '{{ record.overtime if record.overtime else 0 }}',
+                notes: '{{ record.notes if record.notes else "无" }}'
             },
             {% endfor %}
         };
@@ -692,8 +696,12 @@
                         <span class="detail-value study">${detail.duration} 分钟</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">📝 内容</span>
-                        <span class="detail-value">${detail.content}</span>
+                        <span class="detail-label">📋 学习计划/内容</span>
+                        <span class="detail-value">${detail.plan}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">📝 备注</span>
+                        <span class="detail-value">${detail.notes}</span>
                     </div>
                 `;
             } else if (type === 'work') {
@@ -707,12 +715,24 @@
                         <span class="detail-value work">${detail.task}</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">⏱️ 时长</span>
-                        <span class="detail-value work">${detail.hours} 小时</span>
+                        <span class="detail-label">⏱️ 任务时长</span>
+                        <span class="detail-value work">${detail.task_duration} 分钟</span>
                     </div>
                     <div class="detail-item">
-                        <span class="detail-label">📝 描述</span>
-                        <span class="detail-value">${detail.description}</span>
+                        <span class="detail-label">🕐 上班时间</span>
+                        <span class="detail-value work">${detail.work_start}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">🕑 下班时间</span>
+                        <span class="detail-value work">${detail.work_end}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">🌙 加班时长</span>
+                        <span class="detail-value work">${detail.overtime} 分钟</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">📝 备注</span>
+                        <span class="detail-value">${detail.notes}</span>
                     </div>
                 `;
             }

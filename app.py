@@ -98,6 +98,7 @@ class WorkRecord(db.Model):
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref='feedbacks')
     feedback_type = db.Column(db.String(20), nullable=False)  # suggest/bug/praise/other
     contact = db.Column(db.String(100))                        # 联系方式
     content = db.Column(db.Text, nullable=False)               # 反馈内容
