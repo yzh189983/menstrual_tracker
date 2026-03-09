@@ -1,6 +1,6 @@
-# 🌸 月经记录小助手
+# 🌸 日历记录小助手
 
-一个美观实用的经期记录 Web 应用，帮助女性用户追踪和管理生理周期。
+一个美观实用的经期记录 Web 应用，帮助女性用户追踪和管理生理周期。同时支持学习记录和工作记录功能。
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue)
 ![Flask](https://img.shields.io/badge/Flask-2.0+-green)
@@ -8,17 +8,21 @@
 
 ## ✨ 核心功能
 
-### 📅 日历视图
+### 🌸 月经记录
 - 直观的 FullCalendar 日历展示
 - 通过颜色区分经量（少量/中等/大量）
 - 点击日期即可查看或删除记录
 - 支持月视图和列表视图切换
+- 开始日期选择后，结束日期自动同步年月
 
-### 📝 记录管理
-- 添加经期开始和结束日期
-- 记录经量（少量/中等/大量）
-- 添加备注信息
-- 查看和删除历史记录
+### 📚 学习记录
+- 记录学习科目和时长
+- 查看学习趋势统计
+
+### 💼 工作记录
+- 记录工作任务和时长
+- 记录上班/下班时间
+- 统计加班时长
 
 ### 📊 数据统计
 - 本月记录次数统计
@@ -27,16 +31,26 @@
 - 经期趋势图表可视化
 - 间隔天数分析（平均/最长/最短）
 
+### 📅 总日历
+- 整合所有类型的记录
+- 点击记录查看详细信息（弹窗展示）
+- 按颜色区分不同类型记录
+
+### 💬 用户反馈
+- 提交改进建议、错误反馈等
+- 查看反馈历史和回复状态
+
+### 👑 管理员后台
+- 查看所有用户列表
+- 管理用户（修改密码、删除用户）
+- 查看和回复用户反馈
+- 查看所有记录详情
+
 ### 🔐 用户系统
 - 用户注册和登录
 - 个人资料管理
 - 数据隔离（每个用户只能看到自己的记录）
-
-### 📚 多功能支持
-- 经期记录（主要功能）
-- 学习记录
-- 工作记录
-- 总日历视图（整合所有记录）
+- 管理员账号登录
 
 ## 🛠️ 技术栈
 
@@ -52,35 +66,37 @@
 
 - Python 3.8 或更高版本
 - pip 包管理器
+- 或者使用 Anaconda
 
 ### 本地运行
 
 1. **克隆项目**
    ```bash
-   git clone <项目地址>
+   git clone https://github.com/yzh189983/menstrual_tracker.git
    cd menstrual_tracker
    ```
 
-2. **创建虚拟环境（推荐）**
+2. **安装依赖**
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # Linux/Mac
-   # 或
-   venv\Scripts\activate  # Windows
+   pip install flask flask-sqlalchemy flask-login flask-mail
    ```
 
-3. **安装依赖**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **运行应用**
+3. **运行应用**
    ```bash
    python app.py
    ```
 
-5. **访问应用**
+4. **访问应用**
    打开浏览器访问 http://127.0.0.1:5000
+
+### 使用 Anaconda
+
+```bash
+conda create -n flask_app python=3.10
+conda activate flask_app
+pip install flask flask-sqlalchemy flask-login flask-mail
+python app.py
+```
 
 ### 生产环境部署
 
@@ -95,7 +111,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 
 1. 创建 Dockerfile：
    ```dockerfile
-   FROM python:3.9-slim
+   FROM python:3.10-slim
    
    WORKDIR /app
    COPY requirements.txt .
@@ -113,80 +129,46 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
    docker run -d -p 5000:5000 --name menstrual-tracker menstrual-tracker
    ```
 
-#### 使用 Nginx + Gunicorn
-
-1. 安装 Nginx
-2. 配置 Nginx 反向代理：
-   ```nginx
-   server {
-       listen 80;
-       server_name your_domain.com;
-       
-       location / {
-           proxy_pass http://127.0.0.1:5000;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-       }
-   }
-   ```
-
-### 云平台部署
-
-#### Railway
-```bash
-railway init
-railway up
-```
-
-#### Render
-- 连接到 GitHub 仓库
-- 选择 Flask 模板
-- 配置启动命令：`gunicorn app:app`
-
-#### Fly.io
-```bash
-fly launch
-fly deploy
-```
-
 ## 📁 项目结构
 
 ```
 menstrual_tracker/
 ├── app.py                 # 主应用文件
+├── README.md              # 项目说明文档
 ├── requirements.txt       # Python 依赖
 ├── templates/            # HTML 模板
 │   ├── index.html       # 月经记录页面
 │   ├── calendar.html    # 日历页面
-│   ├── all_calendar.html
-│   ├── study.html       # 学习记录
-│   ├── work.html        # 工作记录
-│   ├── profile.html     # 个人资料
-│   ├── login.html       # 登录
+│   ├── all_calendar.html  # 总日历页面
+│   ├── study.html      # 学习记录
+│   ├── work.html       # 工作记录
+│   ├── profile.html    # 个人资料
+│   ├── login.html      # 登录
 │   ├── register.html   # 注册
-│   └── forgot.html     # 忘记密码
-└── static/              # 静态文件（如有）
+│   ├── forgot.html     # 忘记密码
+│   ├── feedback.html   # 用户反馈
+│   ├── admin_login.html # 管理员登录
+│   └── admin.html      # 管理后台
+├── static/              # 静态文件
+└── instance/           # 数据库文件
 ```
 
-## 🔧 配置说明
+## 🔧 管理员说明
 
-### 修改密钥
+### 管理员账号
+- 用户名：`admin`
+- 密码：`yzh18998301631`（建议首次登录后修改）
 
-在 `app.py` 中修改 SECRET_KEY：
-```python
-app.secret_key = 'your-secret-key-here'
-```
+### 访问管理员后台
+1. 登录页面底部点击「管理员登录」
+2. 或直接访问 `/admin/login`
 
-### 数据库
-
-默认使用 SQLite，数据保存在 `menstrual.db` 文件中。
-
-### 端口
-
-默认运行在 5000 端口，可通过环境变量修改：
-```bash
-export PORT=8080
-```
+### 管理员功能
+- 查看所有用户及记录统计
+- 修改用户密码
+- 删除用户（需二次确认）
+- 回复用户反馈
+- 查看所有记录详情
 
 ## 📝 使用说明
 
@@ -195,7 +177,7 @@ export PORT=8080
 3. 点击侧边栏"添加记录"，选择开始和结束日期
 4. 选择经量，添加备注（可选）
 5. 点击保存，记录会自动显示在日历上
-6. 可以通过点击日历上的事件删除记录
+6. 可以通过点击日历上的事件查看详情或删除记录
 
 ## 🤝 贡献指南
 
