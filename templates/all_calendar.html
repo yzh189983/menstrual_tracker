@@ -19,6 +19,115 @@
             background: linear-gradient(135deg, #f9f0ff 0%, #faf5ff 50%, #f9f0ff 100%);
             min-height: 100vh;
             padding: 20px;
+            padding-top: 120px;
+        }
+
+        /* 可伸缩导航栏 */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: linear-gradient(135deg, #9b59b6 0%, #c39bd3 100%);
+            box-shadow: 0 4px 20px rgba(155, 89, 182, 0.4);
+            transition: all 0.3s ease;
+            border-radius: 0 0 25px 25px;
+        }
+
+        .header.collapsed {
+            transform: translateY(-100%);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #9b59b6 0%, #c39bd3 100%);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 20px;
+            border-radius: 0 0 10px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 始终显示的展开按钮 - 手机端专用 */
+        .expand-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 99;
+            background: linear-gradient(135deg, #9b59b6 0%, #c39bd3 100%);
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+            transition: all 0.3s;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .expand-btn.show {
+            display: flex;
+        }
+
+        .expand-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .toggle-btn::before {
+            content: '▲';
+        }
+
+        .header.collapsed .toggle-btn::before {
+            content: '▼';
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 30px 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 8px 18px;
+            border-radius: 15px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #9b59b6;
         }
 
         .container {
@@ -202,6 +311,113 @@
         .stat-card.period .stat-num { color: #ff6b9d; }
         .stat-card.study .stat-num { color: #1890ff; }
         .stat-card.work .stat-num { color: #fa8c16; }
+
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .modal-header h3 {
+            color: #9b59b6;
+            font-size: 1.3em;
+        }
+
+        .modal-close {
+            background: #f5f5f5;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            background: #ff6b9d;
+            color: white;
+        }
+
+        .modal-body {
+            color: #333;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #999;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #333;
+            font-weight: 500;
+            text-align: right;
+            max-width: 60%;
+        }
+
+        .detail-value.period { color: #ff6b9d; }
+        .detail-value.study { color: #1890ff; }
+        .detail-value.work { color: #fa8c16; }
+
+        .modal-type-icon {
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -211,24 +427,32 @@
     <div class="decoration dec4">💼</div>
 
     <div class="container">
-        <div class="header">
-            <div class="header-left">
-                <span class="logo">📅</span>
-                <h1>总日历</h1>
+        <!-- 可伸缩导航栏 -->
+        <div class="header" id="header">
+            <div class="header-top">
+                <div class="header-left">
+                    <span class="logo">📅</span>
+                    <h1>总日历</h1>
+                </div>
+                <div class="user-info">
+                    <a href="{{ url_for('profile') }}" style="text-decoration: none;">
+                        <button class="btn-logout">👤 个人信息</button>
+                    </a>
+                    <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
+                </div>
             </div>
             <div class="nav-tabs">
-                <a href="{{ url_for('index') }}" class="nav-tab">月经记录</a>
-                <a href="{{ url_for('study') }}" class="nav-tab">学习记录</a>
-                <a href="{{ url_for('work') }}" class="nav-tab">工作记录</a>
-                <a href="{{ url_for('all_calendar') }}" class="nav-tab {% if request.endpoint == 'all_calendar' %}active{% endif %}">总日历</a>
+                <a href="{{ url_for('index') }}" class="nav-tab">🌸 月经记录</a>
+                <a href="{{ url_for('study') }}" class="nav-tab">📚 学习记录</a>
+                <a href="{{ url_for('work') }}" class="nav-tab">💼 工作记录</a>
+                <a href="{{ url_for('all_calendar') }}" class="nav-tab {% if request.endpoint == 'all_calendar' %}active{% endif %}">📅 总日历</a>
+                <a href="{{ url_for('feedback') }}" class="nav-tab">💬 反馈</a>
             </div>
-            <div class="user-info">
-                <a href="{{ url_for('profile') }}" style="text-decoration: none;">
-                    <button class="btn-logout">👤 个人信息</button>
-                </a>
-                <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
-            </div>
+            <button class="toggle-btn" onclick="toggleHeader()"></button>
         </div>
+
+        <!-- 手机端展开按钮 -->
+        <button class="expand-btn show" id="expandBtn" onclick="toggleHeader()">☰</button>
 
         <div class="legend-card">
             <h3>🎨 图例说明</h3>
@@ -272,8 +496,66 @@
         </div>
     </div>
 
+    <!-- 详情弹窗 -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📋 记录详情</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-type-icon" id="modalIcon"></div>
+                <div id="modalDetails"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // 月经记录
+        // 月经记录详细信息
+        const periodDetails = {
+            {% for period in periods %}
+            'period_{{ period.id }}': {
+                type: 'period',
+                icon: '🌸',
+                start_date: '{{ period.start_date }}',
+                end_date: '{{ period.end_date }}',
+                days: {{ (period.end_date - period.start_date).days + 1 }},
+                flow: '{{ period.flow }}',
+                flowText: '{% if period.flow == "light" %}少量{% elif period.flow == "medium" %}中等{% else %}大量{% endif %}',
+                notes: '{{ period.notes if period.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 学习记录详细信息
+        const studyDetails = {
+            {% for record in study_records %}
+            'study_{{ record.id }}': {
+                type: 'study',
+                icon: '📚',
+                date: '{{ record.date }}',
+                subject: '{{ record.subject }}',
+                duration: '{{ record.duration }}',
+                content: '{{ record.content if record.content else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 工作记录详细信息
+        const workDetails = {
+            {% for record in work_records %}
+            'work_{{ record.id }}': {
+                type: 'work',
+                icon: '💼',
+                date: '{{ record.date }}',
+                task: '{{ record.task }}',
+                hours: '{{ record.hours }}',
+                description: '{{ record.description if record.description else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 月经记录（事件数据）
         const periodData = [
             {% for period in periods %}
             {
@@ -338,10 +620,155 @@
                     list: '列表'
                 },
                 eventClick: function(info) {
-                    alert('类型: ' + info.event.title);
+                    showDetail(info.event.id);
                 }
             });
             calendar.render();
+        });
+
+        // 显示详情弹窗
+        function showDetail(eventId) {
+            const modal = document.getElementById('detailModal');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalDetails = document.getElementById('modalDetails');
+            
+            let detail = null;
+            let type = '';
+            
+            // 查找记录类型和详情
+            if (periodDetails[eventId]) {
+                detail = periodDetails[eventId];
+                type = 'period';
+            } else if (studyDetails[eventId]) {
+                detail = studyDetails[eventId];
+                type = 'study';
+            } else if (workDetails[eventId]) {
+                detail = workDetails[eventId];
+                type = 'work';
+            }
+            
+            if (!detail) return;
+            
+            // 设置图标
+            modalIcon.textContent = detail.icon;
+            
+            // 根据类型显示不同内容
+            let html = '';
+            if (type === 'period') {
+                html = `
+                    <div class="detail-item">
+                        <span class="detail-label">📅 开始日期</span>
+                        <span class="detail-value period">${detail.start_date}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">📅 结束日期</span>
+                        <span class="detail-value period">${detail.end_date}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">⏱️ 持续天数</span>
+                        <span class="detail-value period">${detail.days} 天</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">💧 经量</span>
+                        <span class="detail-value period">${detail.flowText}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">📝 备注</span>
+                        <span class="detail-value">${detail.notes}</span>
+                    </div>
+                `;
+            } else if (type === 'study') {
+                html = `
+                    <div class="detail-item">
+                        <span class="detail-label">📅 日期</span>
+                        <span class="detail-value study">${detail.date}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">📚 科目</span>
+                        <span class="detail-value study">${detail.subject}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">⏱️ 时长</span>
+                        <span class="detail-value study">${detail.duration} 分钟</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">📝 内容</span>
+                        <span class="detail-value">${detail.content}</span>
+                    </div>
+                `;
+            } else if (type === 'work') {
+                html = `
+                    <div class="detail-item">
+                        <span class="detail-label">📅 日期</span>
+                        <span class="detail-value work">${detail.date}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">💼 任务</span>
+                        <span class="detail-value work">${detail.task}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">⏱️ 时长</span>
+                        <span class="detail-value work">${detail.hours} 小时</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">📝 描述</span>
+                        <span class="detail-value">${detail.description}</span>
+                    </div>
+                `;
+            }
+            
+            modalDetails.innerHTML = html;
+            modal.classList.add('show');
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('show');
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('detailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // 导航栏伸缩功能
+        let headerCollapsed = false;
+        
+        function toggleHeader() {
+            const header = document.getElementById('header');
+            headerCollapsed = !headerCollapsed;
+            
+            if (headerCollapsed) {
+                header.classList.add('collapsed');
+                document.body.style.paddingTop = '20px';
+                document.getElementById('expandBtn').classList.add('show');
+            } else {
+                header.classList.remove('collapsed');
+                document.body.style.paddingTop = '120px';
+                document.getElementById('expandBtn').classList.remove('show');
+            }
+            
+            localStorage.setItem('headerCollapsed', headerCollapsed);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedState = localStorage.getItem('headerCollapsed');
+            if (savedState === 'true') {
+                const header = document.getElementById('header');
+                header.classList.add('collapsed');
+                document.body.style.paddingTop = '20px';
+                headerCollapsed = true;
+                document.getElementById('expandBtn').classList.add('show');
+            }
         });
     </script>
 </body>

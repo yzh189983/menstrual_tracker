@@ -17,6 +17,7 @@
             background: linear-gradient(135deg, #ffe6f3 0%, #fff0f6 50%, #ffe6f3 100%);
             min-height: 100vh;
             padding: 20px;
+            padding-top: 120px;
         }
 
         .container {
@@ -24,16 +25,113 @@
             margin: 0 auto;
         }
 
-        /* 顶部导航 */
+        /* 可伸缩导航栏 */
         .header {
-            background: white;
-            border-radius: 25px;
-            padding: 20px 30px;
-            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.2);
-            margin-bottom: 25px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            box-shadow: 0 4px 20px rgba(255, 107, 157, 0.4);
+            transition: all 0.3s ease;
+            border-radius: 0 0 25px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 15px 30px;
+        }
+
+        .header.collapsed {
+            transform: translateY(-100%);
+        }
+
+        .toggle-btn {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 20px;
+            border-radius: 0 0 10px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 始终显示的展开按钮 - 手机端专用 */
+        .expand-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 99;
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
+            transition: all 0.3s;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .expand-btn.show {
+            display: flex;
+        }
+
+        .expand-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .toggle-btn::before {
+            content: '▲';
+        }
+
+        .header.collapsed .toggle-btn::before {
+            content: '▼';
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 30px 15px;
+            flex-wrap: wrap;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        .nav-tab {
+            padding: 8px 18px;
+            border-radius: 15px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #ff6b9d;
         }
 
         .header-left {
@@ -269,20 +367,27 @@
     <div class="decoration dec4">🌹</div>
 
     <div class="container">
-        <!-- 顶部导航 -->
-        <div class="header">
+        <!-- 可伸缩导航栏 -->
+        <div class="header" id="header">
             <div class="header-left">
                 <span class="logo">👤</span>
                 <h1>个人信息</h1>
             </div>
+            <a href="{{ url_for('logout') }}" style="color: white; text-decoration: none;">
+                <button class="btn-back" style="background: rgba(255,255,255,0.2); color: white;">登出</button>
+            </a>
             <div class="nav-tabs">
-                <a href="{{ url_for('index') }}" class="nav-tab">月经记录</a>
-                <a href="{{ url_for('study') }}" class="nav-tab">学习记录</a>
-                <a href="{{ url_for('work') }}" class="nav-tab">工作记录</a>
-                <a href="{{ url_for('all_calendar') }}" class="nav-tab">总日历</a>
+                <a href="{{ url_for('index') }}" class="nav-tab">🌸 月经记录</a>
+                <a href="{{ url_for('study') }}" class="nav-tab">📚 学习记录</a>
+                <a href="{{ url_for('work') }}" class="nav-tab">💼 工作记录</a>
+                <a href="{{ url_for('all_calendar') }}" class="nav-tab">📅 总日历</a>
+                <a href="{{ url_for('feedback') }}" class="nav-tab">💬 反馈</a>
             </div>
-            <a href="{{ url_for('logout') }}"><button class="btn-back">登出</button></a>
+            <button class="toggle-btn" onclick="toggleHeader()"></button>
         </div>
+
+        <!-- 手机端展开按钮 -->
+        <button class="expand-btn show" id="expandBtn" onclick="toggleHeader()">☰</button>
 
         <!-- 消息提示 -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -366,6 +471,37 @@
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        // 导航栏伸缩功能
+        let headerCollapsed = false;
+        
+        function toggleHeader() {
+            const header = document.getElementById('header');
+            headerCollapsed = !headerCollapsed;
+            
+            if (headerCollapsed) {
+                header.classList.add('collapsed');
+                document.body.style.paddingTop = '20px';
+                document.getElementById('expandBtn').classList.add('show');
+            } else {
+                header.classList.remove('collapsed');
+                document.body.style.paddingTop = '120px';
+                document.getElementById('expandBtn').classList.remove('show');
+            }
+            
+            localStorage.setItem('headerCollapsed', headerCollapsed);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedState = localStorage.getItem('headerCollapsed');
+            if (savedState === 'true') {
+                const header = document.getElementById('header');
+                header.classList.add('collapsed');
+                document.body.style.paddingTop = '20px';
+                headerCollapsed = true;
+                document.getElementById('expandBtn').classList.add('show');
+            }
+        });
     </script>
 </body>
 </html>

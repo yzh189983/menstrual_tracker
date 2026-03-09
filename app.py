@@ -54,6 +54,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     birthday = db.Column(db.Date)
     avatar = db.Column(db.String(200))
+    is_admin = db.Column(db.Boolean, default=False)  # 管理员标识
     created_at = db.Column(db.DateTime, default=datetime.now)
     periods = db.relationship('Period', backref='user', lazy=True)
 
@@ -71,6 +72,7 @@ class Period(db.Model):
 class StudyRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref='study_records')
     date = db.Column(db.Date, nullable=False)
     subject = db.Column(db.String(100), nullable=False)  # 学习科目
     duration = db.Column(db.Integer, nullable=False)      # 学习时长（分钟）
@@ -82,6 +84,7 @@ class StudyRecord(db.Model):
 class WorkRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref='work_records')
     date = db.Column(db.Date, nullable=False)
     task = db.Column(db.String(200))                      # 工作任务
     task_duration = db.Column(db.Integer, default=0)      # 任务时长（分钟）
@@ -89,6 +92,17 @@ class WorkRecord(db.Model):
     work_end = db.Column(db.Time)                         # 下班时间
     overtime = db.Column(db.Integer, default=0)           # 加班时长（分钟）
     notes = db.Column(db.Text)                            # 备注
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+# 用户反馈模型
+class Feedback(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    feedback_type = db.Column(db.String(20), nullable=False)  # suggest/bug/praise/other
+    contact = db.Column(db.String(100))                        # 联系方式
+    content = db.Column(db.Text, nullable=False)               # 反馈内容
+    reply = db.Column(db.Text)                                 # 回复内容
+    status = db.Column(db.String(20), default='pending')       # pending/replied
     created_at = db.Column(db.DateTime, default=datetime.now)
 
 @login_manager.user_loader
@@ -221,6 +235,36 @@ def all_calendar():
                            user=current_user, 
                            timedelta=timedelta)
 
+# 用户反馈页面
+@app.route('/feedback', methods=['GET', 'POST'])
+@login_required
+def feedback():
+    if request.method == 'POST':
+        feedback_type = request.form.get('feedback_type')
+        contact = request.form.get('contact', '')
+        content = request.form.get('content')
+        
+        if not content:
+            flash('请填写反馈内容！', 'error')
+            return redirect(url_for('feedback'))
+        
+        feedback = Feedback(
+            user_id=current_user.id,
+            feedback_type=feedback_type,
+            contact=contact,
+            content=content,
+            status='pending'
+        )
+        db.session.add(feedback)
+        db.session.commit()
+        
+        flash('感谢您的反馈！我们会尽快处理！', 'success')
+        return redirect(url_for('feedback'))
+    
+    # 获取当前用户的反馈记录
+    feedbacks = Feedback.query.filter_by(user_id=current_user.id).order_by(Feedback.created_at.desc()).all()
+    return render_template('feedback.html', feedbacks=feedbacks, user=current_user)
+
 # 注册
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -269,6 +313,129 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+# 管理员登录
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        # 验证管理员账号
+        if username == 'admin' and password == 'yzh18998301631':
+            # 查找或创建管理员用户
+            admin = User.query.filter_by(username='admin').first()
+            if not admin:
+                admin = User(
+                    username='admin',
+                    password_hash=generate_password_hash('yzh18998301631'),
+                    is_admin=True
+                )
+                db.session.add(admin)
+                db.session.commit()
+            else:
+                admin.is_admin = True
+                db.session.commit()
+            
+            login_user(admin)
+            return redirect(url_for('admin_dashboard'))
+        
+        flash('管理员账号或密码错误！', 'error')
+    return render_template('admin_login.html')
+
+# 管理员后台
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    # 检查是否是管理员
+    if not current_user.is_admin:
+        flash('您没有权限访问该页面！', 'error')
+        return redirect(url_for('index'))
+    
+    # 获取所有用户
+    users = User.query.filter_by(is_admin=False).all()
+    
+    # 获取所有记录
+    all_periods = Period.query.all()
+    all_study = StudyRecord.query.all()
+    all_work = WorkRecord.query.all()
+    all_feedback = Feedback.query.order_by(Feedback.created_at.desc()).all()
+    
+    return render_template('admin.html', 
+                           users=users,
+                           all_periods=all_periods,
+                           all_study=all_study,
+                           all_work=all_work,
+                           all_feedback=all_feedback,
+                           user=current_user)
+
+# 回复用户反馈
+@app.route('/admin/feedback/reply/<int:feedback_id>', methods=['POST'])
+@login_required
+def admin_feedback_reply(feedback_id):
+    if not current_user.is_admin:
+        flash('您没有权限操作！', 'error')
+        return redirect(url_for('index'))
+    
+    feedback = Feedback.query.get_or_404(feedback_id)
+    feedback.reply = request.form.get('reply')
+    feedback.status = 'replied'
+    db.session.commit()
+    
+    flash('回复成功！', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+# 删除用户
+@app.route('/admin/delete_user', methods=['POST'])
+@login_required
+def admin_delete_user():
+    if not current_user.is_admin:
+        flash('您没有权限操作！', 'error')
+        return redirect(url_for('index'))
+    
+    user_id = request.form.get('user_id')
+    user = User.query.get_or_404(user_id)
+    
+    # 不能删除自己
+    if user.id == current_user.id:
+        flash('不能删除自己的账号！', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    # 删除用户的所有记录
+    Period.query.filter_by(user_id=user.id).delete()
+    StudyRecord.query.filter_by(user_id=user.id).delete()
+    WorkRecord.query.filter_by(user_id=user.id).delete()
+    Feedback.query.filter_by(user_id=user.id).delete()
+    
+    # 删除用户
+    db.session.delete(user)
+    db.session.commit()
+    
+    flash(f'用户 {user.username} 已删除！', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+# 重置用户密码
+@app.route('/admin/reset_password', methods=['POST'])
+@login_required
+def admin_reset_password():
+    if not current_user.is_admin:
+        flash('您没有权限操作！', 'error')
+        return redirect(url_for('index'))
+    
+    user_id = request.form.get('user_id')
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+    
+    if new_password != confirm_password:
+        flash('两次输入的密码不一致！', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    user = User.query.get_or_404(user_id)
+    user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
+    
+    flash(f'用户 {user.username} 的密码已重置！', 'success')
+    return redirect(url_for('admin_dashboard'))
 
 # 忘记密码页面
 @app.route('/forgot', methods=['GET', 'POST'])
