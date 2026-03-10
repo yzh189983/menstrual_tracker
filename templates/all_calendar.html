@@ -334,8 +334,10 @@
             background: white;
             border-radius: 20px;
             padding: 30px;
-            max-width: 400px;
-            width: 90%;
+            max-width: 700px;
+            width: 95%;
+            max-height: 80vh;
+            overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalIn 0.3s ease;
         }
@@ -386,10 +388,48 @@
             color: #333;
         }
 
+        /* 两栏布局 */
+        .modal-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 600px) {
+            .modal-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-column {
+            padding: 15px;
+            border-radius: 15px;
+        }
+
+        .detail-column.left {
+            background: #f9f0ff;
+        }
+
+        .detail-column.right {
+            background: #f0f9ff;
+        }
+
+        .detail-column h4 {
+            color: #9b59b6;
+            font-size: 1em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .detail-column.right h4 {
+            color: #1890ff;
+        }
+
         .detail-item {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
+            padding: 10px 0;
             border-bottom: 1px solid #f0f0f0;
         }
 
@@ -400,6 +440,7 @@
         .detail-label {
             color: #999;
             font-weight: 500;
+            font-size: 0.9em;
         }
 
         .detail-value {
@@ -407,6 +448,7 @@
             font-weight: 500;
             text-align: right;
             max-width: 60%;
+            word-break: break-word;
         }
 
         .detail-value.period { color: #ff6b9d; }
@@ -536,8 +578,7 @@
                 date: '{{ record.date }}',
                 subject: '{{ record.subject }}',
                 duration: '{{ record.duration }}',
-                plan: '{{ record.plan if record.plan else "无" }}',
-                notes: '{{ record.notes if record.notes else "无" }}'
+                content: '{{ record.plan if record.plan else (record.notes if record.notes else "无") }}'
             },
             {% endfor %}
         };
@@ -549,12 +590,9 @@
                 type: 'work',
                 icon: '💼',
                 date: '{{ record.date }}',
-                task: '{{ record.task if record.task else "无" }}',
-                task_duration: '{{ record.task_duration if record.task_duration else 0 }}',
-                work_start: '{{ record.work_start if record.work_start else "未设置" }}',
-                work_end: '{{ record.work_end if record.work_end else "未设置" }}',
-                overtime: '{{ record.overtime if record.overtime else 0 }}',
-                notes: '{{ record.notes if record.notes else "无" }}'
+                task: '{{ record.task }}',
+                hours: '{% if record.task_duration %}{{ (record.task_duration / 60)|round(1) }}{% else %}0{% endif %}',
+                description: '{{ record.notes if record.notes else "无" }}'
             },
             {% endfor %}
         };
@@ -593,7 +631,7 @@
             {% for record in work_records %}
             {
                 id: 'work_{{ record.id }}',
-                title: '💼 {{ record.task }}',
+                title: '💼 {% if record.task %}{{ record.task }}{% endif %} ({% if record.task_duration %}{{ (record.task_duration / 60)|round(1) }}{% else %}0{% endif %}小时)',
                 start: '{{ record.date }}',
                 backgroundColor: '#fa8c16',
                 borderColor: '#fa8c16',
@@ -660,79 +698,155 @@
             let html = '';
             if (type === 'period') {
                 html = `
-                    <div class="detail-item">
-                        <span class="detail-label">📅 开始日期</span>
-                        <span class="detail-value period">${detail.start_date}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📅 结束日期</span>
-                        <span class="detail-value period">${detail.end_date}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">⏱️ 持续天数</span>
-                        <span class="detail-value period">${detail.days} 天</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">💧 经量</span>
-                        <span class="detail-value period">${detail.flowText}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📝 备注</span>
-                        <span class="detail-value">${detail.notes}</span>
+                    <div class="modal-columns">
+                        <div class="detail-column left">
+                            <h4>📋 记录详情</h4>
+                            <div class="detail-item">
+                                <span class="detail-label">📅 开始日期</span>
+                                <span class="detail-value period">${detail.start_date}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📅 结束日期</span>
+                                <span class="detail-value period">${detail.end_date}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">⏱️ 持续天数</span>
+                                <span class="detail-value period">${detail.days} 天</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">💧 经量</span>
+                                <span class="detail-value period">${detail.flowText}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📝 备注</span>
+                                <span class="detail-value">${detail.notes}</span>
+                            </div>
+                        </div>
+                        <div class="detail-column right">
+                            <h4>📊 统计信息</h4>
+                            <div class="detail-item">
+                                <span class="detail-label">📅 本次经期</span>
+                                <span class="detail-value period">${detail.days} 天</span>
+                            </div>
+                        </div>
                     </div>
                 `;
             } else if (type === 'study') {
+                // 计算统计信息
+                const today = new Date().toISOString().split('T')[0];
+                const thisMonth = today.substring(0, 7);
+                
+                // 今日学习时长
+                let todayDuration = 0;
+                // 累计学习时长
+                let totalDuration = 0;
+                // 本月学习时长
+                let monthDuration = 0;
+                
+                Object.values(studyDetails).forEach(s => {
+                    const dur = parseInt(s.duration) || 0;
+                    totalDuration += dur;
+                    if (s.date === today) todayDuration += dur;
+                    if (s.date.startsWith(thisMonth)) monthDuration += dur;
+                });
+                
                 html = `
-                    <div class="detail-item">
-                        <span class="detail-label">📅 日期</span>
-                        <span class="detail-value study">${detail.date}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📚 科目</span>
-                        <span class="detail-value study">${detail.subject}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">⏱️ 时长</span>
-                        <span class="detail-value study">${detail.duration} 分钟</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📋 学习计划/内容</span>
-                        <span class="detail-value">${detail.plan}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📝 备注</span>
-                        <span class="detail-value">${detail.notes}</span>
+                    <div class="modal-columns">
+                        <div class="detail-column left">
+                            <h4>📋 记录详情</h4>
+                            <div class="detail-item">
+                                <span class="detail-label">📅 日期</span>
+                                <span class="detail-value study">${detail.date}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📚 科目</span>
+                                <span class="detail-value study">${detail.subject}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">⏱️ 时长</span>
+                                <span class="detail-value study">${detail.duration} 分钟</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📝 内容</span>
+                                <span class="detail-value">${detail.content}</span>
+                            </div>
+                        </div>
+                        <div class="detail-column right">
+                            <h4>📊 统计信息</h4>
+                            <div class="detail-item">
+                                <span class="detail-label">🎯 今日目标</span>
+                                <span class="detail-value study">${detail.subject}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">⏰ 今日学习</span>
+                                <span class="detail-value study">${todayDuration} 分钟</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📈 本月学习</span>
+                                <span class="detail-value study">${monthDuration} 分钟</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📚 累计学习</span>
+                                <span class="detail-value study">${totalDuration} 分钟</span>
+                            </div>
+                        </div>
                     </div>
                 `;
             } else if (type === 'work') {
+                // 计算统计信息
+                const today = new Date().toISOString().split('T')[0];
+                const thisMonth = today.substring(0, 7);
+                
+                // 今日工作时长
+                let todayHours = 0;
+                // 累计工作时长
+                let totalHours = 0;
+                // 本月工作时长
+                let monthHours = 0;
+                
+                Object.values(workDetails).forEach(w => {
+                    const hrs = parseFloat(w.hours) || 0;
+                    totalHours += hrs;
+                    if (w.date === today) todayHours += hrs;
+                    if (w.date.startsWith(thisMonth)) monthHours += hrs;
+                });
+                
                 html = `
-                    <div class="detail-item">
-                        <span class="detail-label">📅 日期</span>
-                        <span class="detail-value work">${detail.date}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">💼 任务</span>
-                        <span class="detail-value work">${detail.task}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">⏱️ 任务时长</span>
-                        <span class="detail-value work">${detail.task_duration} 分钟</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">🕐 上班时间</span>
-                        <span class="detail-value work">${detail.work_start}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">🕑 下班时间</span>
-                        <span class="detail-value work">${detail.work_end}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">🌙 加班时长</span>
-                        <span class="detail-value work">${detail.overtime} 分钟</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📝 备注</span>
-                        <span class="detail-value">${detail.notes}</span>
+                    <div class="modal-columns">
+                        <div class="detail-column left">
+                            <h4>📋 记录详情</h4>
+                            <div class="detail-item">
+                                <span class="detail-label">📅 日期</span>
+                                <span class="detail-value work">${detail.date}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">💼 任务</span>
+                                <span class="detail-value work">${detail.task}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">⏱️ 时长</span>
+                                <span class="detail-value work">${detail.hours} 小时</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📝 描述</span>
+                                <span class="detail-value">${detail.description}</span>
+                            </div>
+                        </div>
+                        <div class="detail-column right">
+                            <h4>📊 统计信息</h4>
+                            <div class="detail-item">
+                                <span class="detail-label">💼 本月工作</span>
+                                <span class="detail-value work">${monthHours.toFixed(1)} 小时</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">⏰ 今日工作</span>
+                                <span class="detail-value work">${todayHours.toFixed(1)} 小时</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">📈 累计工作</span>
+                                <span class="detail-value work">${totalHours.toFixed(1)} 小时</span>
+                            </div>
+                        </div>
                     </div>
                 `;
             }
