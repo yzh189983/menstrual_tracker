@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息 - 📱 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 50%, #e8f5e9 100%);
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 120px;
+        }
+
+        /* 可伸缩导航栏 */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+            box-shadow: 0 4px 20px rgba(82, 196, 26, 0.4);
+            transition: all 0.3s ease;
+            border-radius: 0 0 25px 25px;
+        }
+
+        .header.collapsed {
+            transform: translateY(-100%);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 20px;
+            border-radius: 0 0 10px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-btn::before {
+            content: '▲';
+        }
+
+        .header.collapsed .toggle-btn::before {
+            content: '▼';
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 30px 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 8px 18px;
+            border-radius: 15px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #52c41a;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 25px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 30px rgba(82, 196, 26, 0.2);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 35px;
+        }
+
+        .header h1 {
+            color: #52c41a;
+            font-size: 1.5em;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-logout {
+            background: #f6ffed;
+            color: #52c41a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-logout:hover {
+            background: #52c41a;
+            color: white;
+        }
+
+        .chat-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(82, 196, 26, 0.2);
+        }
+
+        .card h2 {
+            color: #52c41a;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 添加好友表单 */
+        .add-friend-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .add-friend-form input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 3px solid #f6ffed;
+            border-radius: 15px;
+            font-size: 14px;
+            font-family: 'Noto Sans SC', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .add-friend-form input:focus {
+            outline: none;
+            border-color: #52c41a;
+            box-shadow: 0 0 15px rgba(82, 196, 26, 0.3);
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, #52c41a, #73d13d);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Noto Sans SC', sans-serif;
+            white-space: nowrap;
+        }
+
+        .btn-add:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(82, 196, 26, 0.4);
+        }
+
+        /* 好友列表 */
+        .friend-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .friend-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            border-radius: 15px;
+            background: #f6ffed;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .friend-item:hover {
+            background: #d9f7be;
+            transform: translateX(5px);
+        }
+
+        .friend-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #52c41a, #95de64);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .friend-info {
+            flex: 1;
+        }
+
+        .friend-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .friend-status {
+            font-size: 0.85em;
+            color: #8c8c8c;
+        }
+
+        .unread-badge {
+            background: #ff4d4f;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* 好友请求 */
+        .friend-requests {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .friend-request-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #fff7e6;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-accept {
+            background: #52c41a;
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-reject {
+            background: #ff4d4f;
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            color: #8c8c8c;
+            padding: 40px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 50px;
+            margin-bottom: 15px;
+        }
+
+        /* 通知样式 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+        }
+
+        .flash-success {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+
+        .flash-error {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+        }
+
+        .flash-info {
+            background: #e6f7ff;
+            color: #1890ff;
+            border: 1px solid #91d5ff;
+        }
+
+        .decoration {
+            position: fixed;
+            font-size: 40px;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .dec1 { top: 10%; left: 10%; }
+        .dec2 { top: 20%; right: 10%; }
+        .dec3 { bottom: 15%; left: 15%; }
+        .dec4 { bottom: 25%; right: 15%; }
+    </style>
+</head>
+<body>
+    <div class="decoration dec1">💬</div>
+    <div class="decoration dec2">🌸</div>
+    <div class="decoration dec3">📚</div>
+    <div class="decoration dec4">💼</div>
+
+    <div class="container">
+        <!-- 可伸缩导航栏 -->
+        <div class="header" id="header">
+            <div class="header-top">
+                <div class="header-left">
+                    <span class="logo">💬</span>
+                    <h1>消息</h1>
+                    {% if unread_count > 0 %}
+                    <span class="unread-badge">{{ unread_count }}</span>
+                    {% endif %}
+                </div>
+                <div class="user-info">
+                    <a href="{{ url_for('profile') }}" style="text-decoration: none;">
+                        <button class="btn-logout">👤 个人信息</button>
+                    </a>
+                    <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
+                </div>
+            </div>
+            <div class="nav-tabs">
+                <a href="{{ url_for('index') }}" class="nav-tab">🌸 月经记录</a>
+                <a href="{{ url_for('study') }}" class="nav-tab">📚 学习记录</a>
+                <a href="{{ url_for('work') }}" class="nav-tab">💼 工作记录</a>
+                <a href="{{ url_for('all_calendar') }}" class="nav-tab">📅 总日历</a>
+                <a href="{{ url_for('chat') }}" class="nav-tab {% if request.endpoint == 'chat' or 'chat_room' in request.endpoint %}active{% endif %}">💬 消息</a>
+                <a href="{{ url_for('feedback') }}" class="nav-tab">💬 反馈</a>
+            </div>
+            <button class="toggle-btn" onclick="toggleHeader()"></button>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="chat-container">
+            <!-- 好友列表 -->
+            <div class="card">
+                <h2>👥 我的好友</h2>
+                
+                <form class="add-friend-form" method="POST" action="{{ url_for('add_friend') }}">
+                    <input type="text" name="username" placeholder="输入用户名添加好友" required>
+                    <button type="submit" class="btn-add">➕ 添加</button>
+                </form>
+
+                {% if friend_requests %}
+                <div class="friend-requests">
+                    <h3 style="color: #fa8c16; margin-bottom: 15px;">📩 好友请求</h3>
+                    {% for friend_user, request in friend_requests %}
+                    <div class="friend-request-item">
+                        <div class="friend-avatar">{{ friend_user.username[0]|upper }}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">{{ friend_user.username }}</div>
+                        </div>
+                        <div class="request-actions">
+                            <a href="{{ url_for('friend_request', request_id=request.id, action='accept') }}">
+                                <button class="btn-accept">✅ 同意</button>
+                            </a>
+                            <a href="{{ url_for('friend_request', request_id=request.id, action='reject') }}">
+                                <button class="btn-reject">❌ 拒绝</button>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="friend-list">
+                    {% if friends %}
+                        {% for friend in friends %}
+                        <a href="{{ url_for('chat_room', friend_id=friend.id) }}" class="friend-item">
+                            <div class="friend-avatar">{{ friend.username[0]|upper }}</div>
+                            <div class="friend-info">
+                                <div class="friend-name">{{ friend.username }}</div>
+                                <div class="friend-status">点击开始聊天</div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👫</div>
+                        <p>还没有好友</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">输入用户名添加好友开始聊天吧！</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 使用说明 -->
+            <div class="card">
+                <h2>💡 使用说明</h2>
+                <div style="color: #666; line-height: 1.8;">
+                    <p style="margin-bottom: 15px;">📌 <strong>如何添加好友：</strong></p>
+                    <p style="margin-bottom: 15px; padding-left: 10px;">1. 在左侧输入对方用户名</p>
+                    <p style="margin-bottom: 15px; padding-left: 10px;">2. 点击"添加"按钮发送请求</p>
+                    <p style="margin-bottom: 25px; padding-left: 10px;">3. 对方同意后成为好友</p>
+
+                    <p style="margin-bottom: 15px;">📌 <strong>如何聊天：</strong></p>
+                    <p style="margin-bottom: 15px; padding-left: 10px;">1. 点击好友头像进入聊天</p>
+                    <p style="margin-bottom: 15px; padding-left: 10px;">2. 发送文字消息</p>
+                    <p style="margin-bottom: 15px; padding-left: 10px;">3. 也可以分享日历记录给对方</p>
+
+                    <p style="margin-bottom: 15px;">📌 <strong>如何分享记录：</strong></p>
+                    <p style="margin-bottom: 15px; padding-left: 10px;">1. 在聊天窗口点击"分享记录"</p>
+                    <p style="padding-left: 10px;">2. 选择要分享的月经/学习/工作记录</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 导航栏伸缩功能
+        let headerCollapsed = false;
+        
+        function toggleHeader() {
+            const header = document.getElementById('header');
+            headerCollapsed = !headerCollapsed;
+            
+            if (headerCollapsed) {
+                header.classList.add('collapsed');
+                document.body.style.paddingTop = '20px';
+            } else {
+                header.classList.remove('collapsed');
+                document.body.style.paddingTop = '120px';
+            }
+            
+            localStorage.setItem('headerCollapsed', headerCollapsed);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedState = localStorage.getItem('headerCollapsed');
+            if (savedState === 'true') {
+                const header = document.getElementById('header');
+                header.classList.add('collapsed');
+                document.body.style.paddingTop = '20px';
+                headerCollapsed = true;
+            }
+        });
+    </script>
+</body>
+</html>
