@@ -406,14 +406,23 @@ def chat_room(friend_id):
     ChatMessage.query.filter_by(sender_id=friend_id, receiver_id=current_user.id, is_read=False).update({'is_read': True})
     db.session.commit()
     
-    # 获取所有记录用于分享
+    # 获取所有记录用于分享（自己的记录）
     periods = Period.query.filter_by(user_id=current_user.id).all()
     study_records = StudyRecord.query.filter_by(user_id=current_user.id).all()
     work_records = WorkRecord.query.filter_by(user_id=current_user.id).all()
     
+    # 获取好友的记录（用于显示对方分享的记录详情）
+    friend_periods = Period.query.filter_by(user_id=friend_id).all()
+    friend_study_records = StudyRecord.query.filter_by(user_id=friend_id).all()
+    friend_work_records = WorkRecord.query.filter_by(user_id=friend_id).all()
+    
     return render_template('chat_room.html', friend=friend, messages=messages,
                            periods=periods, study_records=study_records, 
-                           work_records=work_records, user=current_user)
+                           work_records=work_records,
+                           friend_periods=friend_periods,
+                           friend_study_records=friend_study_records,
+                           friend_work_records=friend_work_records,
+                           user=current_user)
 
 # 发送消息
 @app.route('/chat/send', methods=['POST'])

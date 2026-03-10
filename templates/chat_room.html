@@ -608,7 +608,7 @@
 
     <!-- 记录详情数据 -->
     <script>
-        // 经期记录详情
+        // 经期记录详情（自己的）
         const periodDetails = {
             {% for p in periods %}
             '{{ p.id }}': {
@@ -621,7 +621,20 @@
             {% endfor %}
         };
 
-        // 学习记录详情
+        // 经期记录详情（好友的）
+        const friendPeriodDetails = {
+            {% for p in friend_periods %}
+            '{{ p.id }}': {
+                start_date: '{{ p.start_date }}',
+                end_date: '{{ p.end_date }}',
+                days: {{ (p.end_date - p.start_date).days + 1 }},
+                flow: '{% if p.flow == "light" %}少量{% elif p.flow == "medium" %}中等{% else %}大量{% endif %}',
+                notes: '{{ p.notes if p.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 学习记录详情（自己的）
         const studyDetails = {
             {% for s in study_records %}
             '{{ s.id }}': {
@@ -634,9 +647,34 @@
             {% endfor %}
         };
 
-        // 工作记录详情
+        // 学习记录详情（好友的）
+        const friendStudyDetails = {
+            {% for s in friend_study_records %}
+            '{{ s.id }}': {
+                date: '{{ s.date }}',
+                subject: '{{ s.subject }}',
+                duration: '{{ s.duration }}',
+                plan: '{{ s.plan if s.plan else "无" }}',
+                notes: '{{ s.notes if s.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 工作记录详情（自己的）
         const workDetails = {
             {% for w in work_records %}
+            '{{ w.id }}': {
+                date: '{{ w.date }}',
+                task: '{{ w.task }}',
+                hours: '{% if w.task_duration %}{{ (w.task_duration / 60)|round(1) }}{% else %}0{% endif %}',
+                notes: '{{ w.notes if w.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 工作记录详情（好友的）
+        const friendWorkDetails = {
+            {% for w in friend_work_records %}
             '{{ w.id }}': {
                 date: '{{ w.date }}',
                 task: '{{ w.task }}',
@@ -777,8 +815,9 @@
             let detail = null;
             let html = '';
             
-            if (recordType === 'period' && periodDetails[recordId]) {
-                detail = periodDetails[recordId];
+            // 先查询自己的记录，再查询好友的记录
+            if (recordType === 'period' && (periodDetails[recordId] || friendPeriodDetails[recordId])) {
+                detail = periodDetails[recordId] || friendPeriodDetails[recordId];
                 titleEl.textContent = '🌸 经期记录详情';
                 html = `
                     <div class="detail-row">
@@ -802,8 +841,8 @@
                         <span class="detail-value">${detail.notes}</span>
                     </div>
                 `;
-            } else if (recordType === 'study' && studyDetails[recordId]) {
-                detail = studyDetails[recordId];
+            } else if (recordType === 'study' && (studyDetails[recordId] || friendStudyDetails[recordId])) {
+                detail = studyDetails[recordId] || friendStudyDetails[recordId];
                 titleEl.textContent = '📚 学习记录详情';
                 html = `
                     <div class="detail-row">
@@ -827,8 +866,8 @@
                         <span class="detail-value">${detail.notes}</span>
                     </div>
                 `;
-            } else if (recordType === 'work' && workDetails[recordId]) {
-                detail = workDetails[recordId];
+            } else if (recordType === 'work' && (workDetails[recordId] || friendWorkDetails[recordId])) {
+                detail = workDetails[recordId] || friendWorkDetails[recordId];
                 titleEl.textContent = '💼 工作记录详情';
                 html = `
                     <div class="detail-row">
