@@ -683,6 +683,7 @@
         <div class="nav-tabs">
             <a href="{{ url_for('admin_dashboard') }}" class="nav-tab active">📊 概览</a>
             <a href="{{ url_for('index') }}" class="nav-tab">🌸 用户端</a>
+            <a href="{{ url_for('chat') }}" class="nav-tab">💬 消息</a>
         </div>
         <button class="toggle-btn" onclick="toggleHeader()"></button>
     </div>
@@ -725,7 +726,7 @@
         <!-- 标签页 -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('users')">👥 用户列表</button>
-            <button class="tab-btn" onclick="switchTab('feedback')">💬 反馈管理</button>
+            <button class="tab-btn" onclick="switchTab('feedback')">💭 反馈管理</button>
             <button class="tab-btn" onclick="switchTab('records')">📋 记录详情</button>
         </div>
 

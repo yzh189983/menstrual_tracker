@@ -304,6 +304,17 @@
     <div class="decoration dec4 floating">🌹</div>
 
     <div class="container">
+        <!-- 导航 -->
+        <div class="nav-links" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+            <a href="{{ url_for('index') }}" class="nav-link" style="padding: 8px 16px; background: #ff6b9d; color: white; border-radius: 20px; text-decoration: none;">🌸 月经记录</a>
+            <a href="{{ url_for('study') }}" class="nav-link" style="padding: 8px 16px; background: #1890ff; color: white; border-radius: 20px; text-decoration: none;">📚 学习记录</a>
+            <a href="{{ url_for('work') }}" class="nav-link" style="padding: 8px 16px; background: #fa8c16; color: white; border-radius: 20px; text-decoration: none;">💼 工作记录</a>
+            <a href="{{ url_for('all_calendar') }}" class="nav-link" style="padding: 8px 16px; background: #9b59b6; color: white; border-radius: 20px; text-decoration: none;">📅 总日历</a>
+            <a href="{{ url_for('chat') }}" class="nav-link" style="padding: 8px 16px; background: #52c41a; color: white; border-radius: 20px; text-decoration: none;">💬 消息</a>
+            <a href="{{ url_for('profile') }}" class="nav-link" style="padding: 8px 16px; background: #666; color: white; border-radius: 20px; text-decoration: none;">👤 个人信息</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="padding: 8px 16px; background: #ff4d4f; color: white; border-radius: 20px; text-decoration: none;">登出</a>
+        </div>
+
         <!-- 标题 -->
         <div class="header">
             <h1>🌸 月经记录本 🌸</h1>

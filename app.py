@@ -98,12 +98,39 @@ class WorkRecord(db.Model):
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref='feedbacks')
     feedback_type = db.Column(db.String(20), nullable=False)  # suggest/bug/praise/other
     contact = db.Column(db.String(100))                        # 联系方式
     content = db.Column(db.Text, nullable=False)               # 反馈内容
     reply = db.Column(db.Text)                                 # 回复内容
     status = db.Column(db.String(20), default='pending')       # pending/replied
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+# 好友关系模型
+class Friend(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending/accepted
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    user = db.relationship('User', foreign_keys=[user_id], backref='friends')
+    friend = db.relationship('User', foreign_keys=[friend_id], backref='friend_of')
+
+# 聊天消息模型
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    message_type = db.Column(db.String(20), default='text')  # text/record
+    record_id = db.Column(db.Integer)  # 分享的记录ID
+    record_type = db.Column(db.String(20))  # period/study/work
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -264,6 +291,182 @@ def feedback():
     # 获取当前用户的反馈记录
     feedbacks = Feedback.query.filter_by(user_id=current_user.id).order_by(Feedback.created_at.desc()).all()
     return render_template('feedback.html', feedbacks=feedbacks, user=current_user)
+
+# 聊天主页 - 好友列表
+@app.route('/chat')
+@login_required
+def chat():
+    # 获取好友列表（已接受的）
+    friends = db.session.query(User).join(
+        Friend, (Friend.friend_id == User.id) | (Friend.user_id == User.id)
+    ).filter(
+        ((Friend.user_id == current_user.id) | (Friend.friend_id == current_user.id)),
+        Friend.status == 'accepted',
+        User.id != current_user.id
+    ).all()
+    
+    # 获取未读消息数
+    unread_count = ChatMessage.query.filter_by(receiver_id=current_user.id, is_read=False).count()
+    
+    # 获取好友请求
+    friend_requests = db.session.query(User, Friend).join(
+        Friend, Friend.user_id == User.id
+    ).filter(
+        Friend.friend_id == current_user.id,
+        Friend.status == 'pending'
+    ).all()
+    
+    return render_template('chat.html', friends=friends, friend_requests=friend_requests, 
+                           unread_count=unread_count, user=current_user)
+
+# 添加好友
+@app.route('/chat/add_friend', methods=['POST'])
+@login_required
+def add_friend():
+    username = request.form.get('username')
+    if not username:
+        flash('请输入用户名！', 'error')
+        return redirect(url_for('chat'))
+    
+    # 查找用户
+    friend_user = User.query.filter_by(username=username).first()
+    if not friend_user:
+        flash('用户不存在！', 'error')
+        return redirect(url_for('chat'))
+    
+    if friend_user.id == current_user.id:
+        flash('不能添加自己为好友！', 'error')
+        return redirect(url_for('chat'))
+    
+    # 检查是否已经是好友
+    existing = Friend.query.filter(
+        ((Friend.user_id == current_user.id) & (Friend.friend_id == friend_user.id)) |
+        ((Friend.user_id == friend_user.id) & (Friend.friend_id == current_user.id))
+    ).first()
+    
+    if existing:
+        if existing.status == 'accepted':
+            flash('你们已经是好友了！', 'info')
+        else:
+            flash('已经发送过好友请求了！', 'info')
+        return redirect(url_for('chat'))
+    
+    # 创建好友请求
+    friend = Friend(user_id=current_user.id, friend_id=friend_user.id, status='pending')
+    db.session.add(friend)
+    db.session.commit()
+    
+    flash(f'已向 {username} 发送好友请求！', 'success')
+    return redirect(url_for('chat'))
+
+# 同意/拒绝好友请求
+@app.route('/chat/friend_request/<int:request_id>/<action>')
+@login_required
+def friend_request(request_id, action):
+    friend = Friend.query.get_or_404(request_id)
+    
+    if friend.friend_id != current_user.id:
+        flash('无权操作！', 'error')
+        return redirect(url_for('chat'))
+    
+    if action == 'accept':
+        friend.status = 'accepted'
+        db.session.commit()
+        flash('已同意好友请求！', 'success')
+    elif action == 'reject':
+        db.session.delete(friend)
+        db.session.commit()
+        flash('已拒绝好友请求！', 'success')
+    
+    return redirect(url_for('chat'))
+
+# 与好友聊天页面
+@app.route('/chat/<int:friend_id>')
+@login_required
+def chat_room(friend_id):
+    # 检查是否是好友
+    friendship = Friend.query.filter(
+        ((Friend.user_id == current_user.id) & (Friend.friend_id == friend_id)) |
+        ((Friend.user_id == friend_id) & (Friend.friend_id == current_user.id))
+    ).filter(Friend.status == 'accepted').first()
+    
+    if not friendship:
+        flash('你们还不是好友！', 'error')
+        return redirect(url_for('chat'))
+    
+    friend = User.query.get_or_404(friend_id)
+    
+    # 获取聊天记录
+    messages = ChatMessage.query.filter(
+        ((ChatMessage.sender_id == current_user.id) & (ChatMessage.receiver_id == friend_id)) |
+        ((ChatMessage.sender_id == friend_id) & (ChatMessage.receiver_id == current_user.id))
+    ).order_by(ChatMessage.created_at.asc()).all()
+    
+    # 标记未读消息为已读
+    ChatMessage.query.filter_by(sender_id=friend_id, receiver_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    
+    # 获取所有记录用于分享（自己的记录）
+    periods = Period.query.filter_by(user_id=current_user.id).all()
+    study_records = StudyRecord.query.filter_by(user_id=current_user.id).all()
+    work_records = WorkRecord.query.filter_by(user_id=current_user.id).all()
+    
+    # 获取好友的记录（用于显示对方分享的记录详情）
+    friend_periods = Period.query.filter_by(user_id=friend_id).all()
+    friend_study_records = StudyRecord.query.filter_by(user_id=friend_id).all()
+    friend_work_records = WorkRecord.query.filter_by(user_id=friend_id).all()
+    
+    return render_template('chat_room.html', friend=friend, messages=messages,
+                           periods=periods, study_records=study_records, 
+                           work_records=work_records,
+                           friend_periods=friend_periods,
+                           friend_study_records=friend_study_records,
+                           friend_work_records=friend_work_records,
+                           user=current_user)
+
+# 发送消息
+@app.route('/chat/send', methods=['POST'])
+@login_required
+def send_message():
+    receiver_id = request.form.get('receiver_id')
+    message = request.form.get('message', '').strip()
+    message_type = request.form.get('message_type', 'text')
+    record_id = request.form.get('record_id')
+    record_type = request.form.get('record_type')
+    
+    if not receiver_id:
+        flash('请选择接收者！', 'error')
+        return redirect(url_for('chat'))
+    
+    receiver_id = int(receiver_id)
+    
+    # 检查是否是好友
+    friendship = Friend.query.filter(
+        ((Friend.user_id == current_user.id) & (Friend.friend_id == receiver_id)) |
+        ((Friend.user_id == receiver_id) & (Friend.friend_id == current_user.id))
+    ).filter(Friend.status == 'accepted').first()
+    
+    if not friendship:
+        flash('你们还不是好友！', 'error')
+        return redirect(url_for('chat'))
+    
+    if message_type == 'text' and not message:
+        flash('消息内容不能为空！', 'error')
+        return redirect(url_for('chat_room', friend_id=receiver_id))
+    
+    # 创建消息
+    chat_msg = ChatMessage(
+        sender_id=current_user.id,
+        receiver_id=receiver_id,
+        message=message,
+        message_type=message_type,
+        record_id=record_id,
+        record_type=record_type
+    )
+    db.session.add(chat_msg)
+    db.session.commit()
+    
+    return redirect(url_for('chat_room', friend_id=receiver_id))
 
 # 注册
 @app.route('/register', methods=['GET', 'POST'])

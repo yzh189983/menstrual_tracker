@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>与 {{ friend.username }} 聊天 - 📱 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 50%, #e8f5e9 100%);
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 80px;
+        }
+
+        .chat-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 10px 40px rgba(82, 196, 26, 0.2);
+            overflow: hidden;
+            height: calc(100vh - 100px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 聊天头部 */
+        .chat-header {
+            background: linear-gradient(135deg, #9b59b6 0%, #b07cc6 100%);
+            color: white;
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .chat-user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .chat-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: white;
+            color: #9b59b6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .chat-username {
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+
+        .chat-status {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+
+        /* 分享记录按钮 */
+        .share-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Noto Sans SC', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .share-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* 消息区域 */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 20px;
+            animation: messageIn 0.3s ease;
+        }
+
+        @keyframes messageIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.sent {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #9b59b6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .message.sent .message-avatar {
+            background: #1890ff;
+        }
+
+        .message-content {
+            max-width: 70%;
+            margin: 0 12px;
+        }
+
+        .message-bubble {
+            padding: 12px 18px;
+            border-radius: 18px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .message.sent .message-bubble {
+            background: #f3e5f5;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received .message-bubble {
+            background: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-text {
+            color: #333;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .message-time {
+            font-size: 0.75em;
+            color: #8c8c8c;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .message.sent .message-time {
+            text-align: left;
+        }
+
+        /* 分享的记录样式 */
+        .shared-record {
+            background: #f6ffed;
+            border: 1px solid #e1bee7;
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .shared-record:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .shared-record.period {
+            background: #fff0f6;
+            border-color: #ffadd2;
+        }
+
+        .shared-record.study {
+            background: #e6f7ff;
+            border-color: #91d5ff;
+        }
+
+        .shared-record.work {
+            background: #fff7e6;
+            border-color: #ffd591;
+        }
+
+        .shared-record-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .shared-record-detail {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        /* 输入区域 */
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .chat-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #f0f0f0;
+            border-radius: 25px;
+            font-size: 15px;
+            font-family: 'Noto Sans SC', sans-serif;
+            resize: none;
+            transition: all 0.3s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #9b59b6;
+            box-shadow: 0 0 0 3px rgba(82, 196, 26, 0.1);
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, #9b59b6, #b07cc6);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-send:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 20px rgba(82, 196, 26, 0.4);
+        }
+
+        /* 分享记录弹窗 */
+        .share-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .share-modal.show {
+            display: flex;
+        }
+
+        .share-modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 70vh;
+            overflow-y: auto;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .share-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .share-modal-header h3 {
+            color: #9b59b6;
+        }
+
+        .share-modal-close {
+            background: #f5f5f5;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .share-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .share-tab {
+            padding: 8px 16px;
+            border: none;
+            background: #f5f5f5;
+            border-radius: 15px;
+            cursor: pointer;
+            font-family: 'Noto Sans SC', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .share-tab.active {
+            background: #9b59b6;
+            color: white;
+        }
+
+        .share-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .share-item {
+            padding: 12px;
+            border: 1px solid #f0f0f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .share-item:hover {
+            border-color: #9b59b6;
+            background: #f6ffed;
+        }
+
+        .share-item-title {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .share-item-date {
+            font-size: 0.85em;
+            color: #8c8c8c;
+        }
+
+        /* 空状态 */
+        .empty-messages {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8c8c8c;
+        }
+
+        .empty-messages-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        /* 通知样式 */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+        }
+
+        .flash-success {
+            background: #f6ffed;
+            color: #9b59b6;
+            border: 1px solid #e1bee7;
+        }
+
+        /* 记录详情弹窗 */
+        .detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .detail-modal.show {
+            display: flex;
+        }
+
+        .detail-modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 400px;
+            width: 90%;
+            animation: modalIn 0.3s ease;
+        }
+
+        .detail-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .detail-modal-header h3 {
+            color: #9b59b6;
+        }
+
+        .detail-modal-close {
+            background: #f5f5f5;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .detail-info {
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #333;
+            font-weight: 500;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-wrapper">
+        <!-- 头部 -->
+        <div class="chat-header">
+            <a href="{{ url_for('chat') }}" class="back-btn">←</a>
+            <div class="chat-user-info">
+                <div class="chat-avatar">{{ friend.username[0]|upper }}</div>
+                <div>
+                    <div class="chat-username">{{ friend.username }}</div>
+                    <div class="chat-status">点击头像开始聊天</div>
+                </div>
+            </div>
+            <button class="share-btn" onclick="showShareModal()">📤 分享记录</button>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages" style="margin: 15px;">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- 消息区域 -->
+        <div class="chat-messages" id="chatMessages">
+            {% if messages %}
+                {% for msg in messages %}
+                <div class="message {% if msg.sender_id == current_user.id %}sent{% else %}received{% endif %}">
+                    <div class="message-avatar">
+                        {% if msg.sender_id == current_user.id %}
+                            {{ current_user.username[0]|upper }}
+                        {% else %}
+                            {{ friend.username[0]|upper }}
+                        {% endif %}
+                    </div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            {% if msg.message_type == 'text' %}
+                                <div class="message-text">{{ msg.message }}</div>
+                            {% elif msg.message_type == 'record' %}
+                                <div class="message-text">{{ msg.message }}</div>
+                                {% if msg.record_type == 'period' %}
+                                <div class="shared-record period" onclick="showRecordDetail('{{ msg.record_id }}', 'period')">
+                                    <div class="shared-record-title">🌸 经期记录</div>
+                                    <div class="shared-record-detail">开始: {{ msg.record_id }}</div>
+                                </div>
+                                {% elif msg.record_type == 'study' %}
+                                <div class="shared-record study" onclick="showRecordDetail('{{ msg.record_id }}', 'study')">
+                                    <div class="shared-record-title">📚 学习记录</div>
+                                    <div class="shared-record-detail">科目: {{ msg.record_id }}</div>
+                                </div>
+                                {% elif msg.record_type == 'work' %}
+                                <div class="shared-record work" onclick="showRecordDetail('{{ msg.record_id }}', 'work')">
+                                    <div class="shared-record-title">💼 工作记录</div>
+                                    <div class="shared-record-detail">任务: {{ msg.record_id }}</div>
+                                </div>
+                                {% endif %}
+                            {% endif %}
+                            <div class="message-time">{{ msg.created_at.strftime('%H:%M') }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-messages">
+                    <div class="empty-messages-icon">💬</div>
+                    <p>还没有消息</p>
+                    <p style="margin-top: 10px;">开始和 {{ friend.username }} 聊天吧！</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="chat-input-area">
+            <form class="chat-input-form" method="POST" action="{{ url_for('send_message') }}">
+                <input type="hidden" name="receiver_id" value="{{ friend.id }}">
+                <input type="hidden" name="message_type" value="text" id="messageType">
+                <input type="hidden" name="record_id" value="" id="recordId">
+                <input type="hidden" name="record_type" value="" id="recordType">
+                <div class="chat-input-wrapper">
+                    <textarea 
+                        class="chat-input" 
+                        name="message" 
+                        placeholder="输入消息..." 
+                        rows="1"
+                        id="messageInput"
+                        onkeydown="handleKeyDown(event)"
+                    ></textarea>
+                </div>
+                <button type="submit" class="btn-send">➤</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 记录详情数据 -->
+    <script>
+        // 经期记录详情（自己的）
+        const periodDetails = {
+            {% for p in periods %}
+            '{{ p.id }}': {
+                start_date: '{{ p.start_date }}',
+                end_date: '{{ p.end_date }}',
+                days: {{ (p.end_date - p.start_date).days + 1 }},
+                flow: '{% if p.flow == "light" %}少量{% elif p.flow == "medium" %}中等{% else %}大量{% endif %}',
+                notes: '{{ p.notes if p.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 经期记录详情（好友的）
+        const friendPeriodDetails = {
+            {% for p in friend_periods %}
+            '{{ p.id }}': {
+                start_date: '{{ p.start_date }}',
+                end_date: '{{ p.end_date }}',
+                days: {{ (p.end_date - p.start_date).days + 1 }},
+                flow: '{% if p.flow == "light" %}少量{% elif p.flow == "medium" %}中等{% else %}大量{% endif %}',
+                notes: '{{ p.notes if p.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 学习记录详情（自己的）
+        const studyDetails = {
+            {% for s in study_records %}
+            '{{ s.id }}': {
+                date: '{{ s.date }}',
+                subject: '{{ s.subject }}',
+                duration: '{{ s.duration }}',
+                plan: '{{ s.plan if s.plan else "无" }}',
+                notes: '{{ s.notes if s.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 学习记录详情（好友的）
+        const friendStudyDetails = {
+            {% for s in friend_study_records %}
+            '{{ s.id }}': {
+                date: '{{ s.date }}',
+                subject: '{{ s.subject }}',
+                duration: '{{ s.duration }}',
+                plan: '{{ s.plan if s.plan else "无" }}',
+                notes: '{{ s.notes if s.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 工作记录详情（自己的）
+        const workDetails = {
+            {% for w in work_records %}
+            '{{ w.id }}': {
+                date: '{{ w.date }}',
+                task: '{{ w.task }}',
+                hours: '{% if w.task_duration %}{{ (w.task_duration / 60)|round(1) }}{% else %}0{% endif %}',
+                notes: '{{ w.notes if w.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+
+        // 工作记录详情（好友的）
+        const friendWorkDetails = {
+            {% for w in friend_work_records %}
+            '{{ w.id }}': {
+                date: '{{ w.date }}',
+                task: '{{ w.task }}',
+                hours: '{% if w.task_duration %}{{ (w.task_duration / 60)|round(1) }}{% else %}0{% endif %}',
+                notes: '{{ w.notes if w.notes else "无" }}'
+            },
+            {% endfor %}
+        };
+    </script>
+
+    <!-- 分享记录弹窗 -->
+    <div class="share-modal" id="shareModal">
+        <div class="share-modal-content">
+            <div class="share-modal-header">
+                <h3>📤 分享记录</h3>
+                <button class="share-modal-close" onclick="closeShareModal()">×</button>
+            </div>
+            
+            <div class="share-tabs">
+                <button class="share-tab active" onclick="switchShareTab('period')">🌸 经期</button>
+                <button class="share-tab" onclick="switchShareTab('study')">📚 学习</button>
+                <button class="share-tab" onclick="switchShareTab('work')">💼 工作</button>
+            </div>
+
+            <div class="share-list" id="shareList">
+                <!-- 经期记录 -->
+                <div class="share-category" id="period">
+                    {% if periods %}
+                        {% for p in periods %}
+                        <div class="share-item" onclick="shareRecord('{{ p.id }}', 'period', '{{ (p.end_date - p.start_date).days + 1 }}天')">
+                            <div class="share-item-title">🌸 经期 ({{ (p.end_date - p.start_date).days + 1 }}天)</div>
+                            <div class="share-item-date">{{ p.start_date }} ~ {{ p.end_date }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: #8c8c8c; text-align: center; padding: 20px;">暂无经期记录</p>
+                    {% endif %}
+                </div>
+
+                <div class="share-category" id="study" style="display: none;">
+                    {% if study_records %}
+                        {% for s in study_records %}
+                        <div class="share-item" onclick="shareRecord('{{ s.id }}', 'study', '{{ s.subject }} - {{ s.duration }}分钟')">
+                            <div class="share-item-title">📚 {{ s.subject }}</div>
+                            <div class="share-item-date">{{ s.date }} · {{ s.duration }}分钟</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: #8c8c8c; text-align: center; padding: 20px;">暂无学习记录</p>
+                    {% endif %}
+                </div>
+
+                <div class="share-category" id="work" style="display: none;">
+                    {% if work_records %}
+                        {% for w in work_records %}
+                        <div class="share-item" onclick="shareRecord('{{ w.id }}', 'work', '{{ w.task }} - {{ (w.task_duration/60)|round(1) if w.task_duration else 0 }}小时')">
+                            <div class="share-item-title">💼 {{ w.task }}</div>
+                            <div class="share-item-date">{{ w.date }} · {{ (w.task_duration/60)|round(1) if w.task_duration else 0 }}小时</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: #8c8c8c; text-align: center; padding: 20px;">暂无工作记录</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 记录详情弹窗 -->
+    <div class="detail-modal" id="detailModal">
+        <div class="detail-modal-content">
+            <div class="detail-modal-header">
+                <h3 id="detailTitle">📋 记录详情</h3>
+                <button class="detail-modal-close" onclick="closeDetailModal()">×</button>
+            </div>
+            <div class="detail-info" id="detailInfo">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 自动滚动到底部
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // 处理回车发送
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                const form = event.target.closest('form');
+                if (event.target.value.trim()) {
+                    form.submit();
+                }
+            }
+        }
+
+        // 显示分享弹窗
+        function showShareModal() {
+            document.getElementById('shareModal').classList.add('show');
+        }
+
+        // 关闭分享弹窗
+        function closeShareModal() {
+            document.getElementById('shareModal').classList.remove('show');
+        }
+
+        // 切换分享标签
+        function switchShareTab(type) {
+            // 更新标签样式
+            document.querySelectorAll('.share-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 显示对应的列表
+            document.querySelectorAll('.share-category').forEach(cat => {
+                cat.style.display = 'none';
+            });
+            document.getElementById(type).style.display = 'block';
+        }
+
+        // 分享记录
+        function shareRecord(recordId, recordType, title) {
+            document.getElementById('messageType').value = 'record';
+            document.getElementById('recordId').value = recordId;
+            document.getElementById('recordType').value = recordType;
+            document.getElementById('messageInput').value = '分享了记录: ' + title;
+            closeShareModal();
+        }
+
+        // 显示记录详情弹窗
+        function showRecordDetail(recordId, recordType) {
+            const modal = document.getElementById('detailModal');
+            const titleEl = document.getElementById('detailTitle');
+            const infoEl = document.getElementById('detailInfo');
+            
+            let detail = null;
+            let html = '';
+            
+            // 先查询自己的记录，再查询好友的记录
+            if (recordType === 'period' && (periodDetails[recordId] || friendPeriodDetails[recordId])) {
+                detail = periodDetails[recordId] || friendPeriodDetails[recordId];
+                titleEl.textContent = '🌸 经期记录详情';
+                html = `
+                    <div class="detail-row">
+                        <span class="detail-label">📅 开始日期</span>
+                        <span class="detail-value" style="color: #ff6b9d;">${detail.start_date}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📅 结束日期</span>
+                        <span class="detail-value" style="color: #ff6b9d;">${detail.end_date}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">⏱️ 持续天数</span>
+                        <span class="detail-value" style="color: #ff6b9d;">${detail.days} 天</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">💧 经量</span>
+                        <span class="detail-value" style="color: #ff6b9d;">${detail.flow}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📝 备注</span>
+                        <span class="detail-value">${detail.notes}</span>
+                    </div>
+                `;
+            } else if (recordType === 'study' && (studyDetails[recordId] || friendStudyDetails[recordId])) {
+                detail = studyDetails[recordId] || friendStudyDetails[recordId];
+                titleEl.textContent = '📚 学习记录详情';
+                html = `
+                    <div class="detail-row">
+                        <span class="detail-label">📅 日期</span>
+                        <span class="detail-value" style="color: #1890ff;">${detail.date}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📖 科目</span>
+                        <span class="detail-value" style="color: #1890ff;">${detail.subject}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">⏱️ 时长</span>
+                        <span class="detail-value" style="color: #1890ff;">${detail.duration} 分钟</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📝 学习计划</span>
+                        <span class="detail-value">${detail.plan}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">💭 备注</span>
+                        <span class="detail-value">${detail.notes}</span>
+                    </div>
+                `;
+            } else if (recordType === 'work' && (workDetails[recordId] || friendWorkDetails[recordId])) {
+                detail = workDetails[recordId] || friendWorkDetails[recordId];
+                titleEl.textContent = '💼 工作记录详情';
+                html = `
+                    <div class="detail-row">
+                        <span class="detail-label">📅 日期</span>
+                        <span class="detail-value" style="color: #fa8c16;">${detail.date}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">💼 任务</span>
+                        <span class="detail-value" style="color: #fa8c16;">${detail.task}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">⏱️ 时长</span>
+                        <span class="detail-value" style="color: #fa8c16;">${detail.hours} 小时</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📝 描述</span>
+                        <span class="detail-value">${detail.notes}</span>
+                    </div>
+                `;
+            } else {
+                html = '<p style="text-align: center; color: #999;">记录不存在或已删除</p>';
+            }
+            
+            infoEl.innerHTML = html;
+            modal.classList.add('show');
+        }
+
+        // 关闭详情弹窗
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.remove('show');
+        }
+
+        // 点击详情弹窗外部关闭
+        document.getElementById('detailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDetailModal();
+            }
+        });
+
+        // 点击弹窗外部关闭
+        document.getElementById('shareModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeShareModal();
+            }
+        });
+
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeShareModal();
+            }
+        });
+    </script>
+</body>
+</html>

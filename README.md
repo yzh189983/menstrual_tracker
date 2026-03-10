@@ -1,6 +1,6 @@
 # 🌸 日历记录小助手
 
-一个美观实用的经期记录 Web 应用，帮助女性用户追踪和管理生理周期。同时支持学习记录和工作记录功能。
+一个美观实用的经期记录 Web 应用，帮助女性用户追踪和管理生理周期。同时支持学习记录、工作记录和即时聊天功能。
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue)
 ![Flask](https://img.shields.io/badge/Flask-2.0+-green)
@@ -23,6 +23,12 @@
 - 记录工作任务和时长
 - 记录上班/下班时间
 - 统计加班时长
+
+### 💬 即时聊天
+- 好友添加与管理
+- 好友请求处理（接受/拒绝）
+- 实时一对一聊天
+- 聊天记录存储
 
 ### 📊 数据统计
 - 本月记录次数统计
@@ -48,7 +54,7 @@
 
 ### 🔐 用户系统
 - 用户注册和登录
-- 个人资料管理
+- 个人资料管理（含头像上传）
 - 数据隔离（每个用户只能看到自己的记录）
 - 管理员账号登录
 
@@ -78,7 +84,7 @@
 
 2. **安装依赖**
    ```bash
-   pip install flask flask-sqlalchemy flask-login flask-mail
+   pip install -r requirements.txt
    ```
 
 3. **运行应用**
@@ -94,7 +100,7 @@
 ```bash
 conda create -n flask_app python=3.10
 conda activate flask_app
-pip install flask flask-sqlalchemy flask-login flask-mail
+pip install -r requirements.txt
 python app.py
 ```
 
@@ -136,21 +142,27 @@ menstrual_tracker/
 ├── app.py                 # 主应用文件
 ├── README.md              # 项目说明文档
 ├── requirements.txt       # Python 依赖
+├── periods.json           # 经期数据文件
 ├── templates/            # HTML 模板
-│   ├── index.html       # 月经记录页面
-│   ├── calendar.html    # 日历页面
-│   ├── all_calendar.html  # 总日历页面
-│   ├── study.html      # 学习记录
-│   ├── work.html       # 工作记录
-│   ├── profile.html    # 个人资料
-│   ├── login.html      # 登录
-│   ├── register.html   # 注册
-│   ├── forgot.html     # 忘记密码
-│   ├── feedback.html   # 用户反馈
-│   ├── admin_login.html # 管理员登录
-│   └── admin.html      # 管理后台
-├── static/              # 静态文件
-└── instance/           # 数据库文件
+│   ├── index.html        # 月经记录页面
+│   ├── calendar.html     # 月经日历页面
+│   ├── all_calendar.html # 总日历页面
+│   ├── study.html         # 学习记录
+│   ├── work.html          # 工作记录
+│   ├── chat.html         # 聊天主页
+│   ├── chat_room.html    # 聊天房间
+│   ├── profile.html      # 个人资料
+│   ├── login.html        # 登录
+│   ├── register.html     # 注册
+│   ├── forgot.html       # 忘记密码
+│   ├── feedback.html     # 用户反馈
+│   ├── admin_login.html  # 管理员登录
+│   └── admin.html        # 管理后台
+├── static/               # 静态文件
+│   ├── css/             # 样式文件
+│   ├── js/              # JavaScript 文件
+│   └── images/          # 图片资源
+└── instance/            # 数据库文件
 ```
 
 ## 🔧 管理员说明
@@ -172,12 +184,19 @@ menstrual_tracker/
 
 ## 📝 使用说明
 
+### 月经记录
 1. 首次访问需要注册账号
 2. 登录后进入月经记录页面
 3. 点击侧边栏"添加记录"，选择开始和结束日期
 4. 选择经量，添加备注（可选）
 5. 点击保存，记录会自动显示在日历上
 6. 可以通过点击日历上的事件查看详情或删除记录
+
+### 聊天功能
+1. 进入聊天页面
+2. 点击"添加好友"输入好友用户名发送请求
+3. 好友接受请求后即可开始聊天
+4. 在聊天房间中发送和接收消息
 
 ## 🤝 贡献指南
 
