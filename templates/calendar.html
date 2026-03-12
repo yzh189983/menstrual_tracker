@@ -409,10 +409,14 @@
             box-shadow: 0 4px 20px rgba(255, 107, 157, 0.4);
             transition: all 0.3s ease;
             border-radius: 0 0 25px 25px;
+            display: flex;
+            flex-direction: column;
+            padding: 60px 20px 15px;
+            min-height: auto;
         }
 
         .header.collapsed {
-            transform: translateY(-100%);
+            transform: translateY(-85%);
         }
 
         .header.collapsed .toggle-btn {
@@ -489,24 +493,26 @@
         .nav-tabs {
             display: flex;
             gap: 8px;
-            padding: 0 30px 15px;
+            padding: 0;
             flex-wrap: wrap;
+            justify-content: center;
         }
 
         .nav-tab {
-            padding: 8px 18px;
+            padding: 8px 14px;
             border-radius: 15px;
             text-decoration: none;
-            color: rgba(255, 255, 255, 0.85);
-            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
             transition: all 0.3s;
             font-weight: 500;
-            font-size: 0.9em;
+            font-size: 0.85em;
+            white-space: nowrap;
         }
 
         .nav-tab:hover {
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
+            background: white;
+            color: #ff6b9d;
         }
 
         .nav-tab.active {
@@ -548,6 +554,7 @@
             <a href="{{ url_for('study') }}" class="nav-tab">📚 学习记录</a>
             <a href="{{ url_for('work') }}" class="nav-tab">💼 工作记录</a>
             <a href="{{ url_for('all_calendar') }}" class="nav-tab">📅 总日历</a>
+            <a href="{{ url_for('chat') }}" class="nav-tab">💬 消息</a>
             <a href="{{ url_for('feedback') }}" class="nav-tab">💭 反馈</a>
         </div>
         <button class="toggle-btn" onclick="toggleHeader()"></button>
