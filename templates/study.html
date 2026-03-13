@@ -436,6 +436,97 @@
             margin-top: 20px;
             max-height: 200px;
         }
+
+        /* AI 按钮样式 */
+        .btn-ai {
+            border: none;
+            padding: 14px 20px;
+            border-radius: 15px;
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-ai:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 25px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal .close:hover {
+            color: #1890ff;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e6f7ff;
+            border-radius: 15px;
+            font-size: 15px;
+            font-family: 'Noto Sans SC', sans-serif;
+            transition: border-color 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #1890ff;
+        }
+
+        textarea.form-input {
+            min-height: 100px;
+            resize: vertical;
+        }
     </style>
 </head>
 <body>
@@ -462,6 +553,7 @@
             <div class="nav-tabs">
                 <a href="{{ url_for('index') }}" class="nav-tab">🌸 月经记录</a>
                 <a href="{{ url_for('study') }}" class="nav-tab {% if request.endpoint == 'study' %}active{% endif %}">📚 学习记录</a>
+                <a href="{{ url_for('wrong_questions') }}" class="nav-tab">📚 错题集</a>
                 <a href="{{ url_for('work') }}" class="nav-tab">💼 工作记录</a>
                 <a href="{{ url_for('all_calendar') }}" class="nav-tab">📅 总日历</a>
                 <a href="{{ url_for('chat') }}" class="nav-tab {% if request.endpoint == 'chat' or 'chat_room' in request.endpoint %}active{% endif %}">💬 消息</a>
@@ -530,6 +622,22 @@
                     <div class="stat-item">
                         <span class="stat-label">平均时长</span>
                         <span class="stat-value" id="avg-duration">{% if records|length > 0 %}{{ (records|sum(attribute='duration') / records|length)|round(1) }} 分钟{% else %}0 分钟{% endif %}</span>
+                    </div>
+                </div>
+
+                <!-- AI 学习助手 -->
+                <div class="stats-card" style="margin-top: 20px; background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);">
+                    <h3>🤖 AI 学习助手</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                        <button class="btn-ai" onclick="openStudyPlan()" style="background: linear-gradient(135deg, #1890ff 0%, #69c9ff 100%);">
+                            📝 AI 学习计划
+                        </button>
+                        <button class="btn-ai" onclick="aiAnalyze()" style="background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);">
+                            📈 AI 效率分析
+                        </button>
+                        <button class="btn-ai" onclick="openWrongQuestion()" style="background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%);">
+                            ❌ AI 错题辅导
+                        </button>
                     </div>
                 </div>
             </div>
@@ -662,6 +770,367 @@
                 document.getElementById('expandBtn').classList.add('show');
             }
         });
+
+        // ==================== AI 学习功能 ====================
+
+        // 弹窗控制
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // 打开学习计划弹窗
+        function openStudyPlan() {
+            document.getElementById('studyPlanModal').style.display = 'block';
+            document.getElementById('planResult').innerHTML = '';
+        }
+
+        // 生成学习计划
+        async function generateStudyPlan() {
+            const subject = document.getElementById('planSubject').value.trim();
+            const goal = document.getElementById('planGoal').value.trim();
+            const days = document.getElementById('planDays').value || 7;
+            const resultDiv = document.getElementById('planResult');
+
+            if (!subject) {
+                alert('请输入学习科目');
+                return;
+            }
+
+            resultDiv.innerHTML = '<p style="text-align: center; color: #666;">🤔 正在生成学习计划...</p>';
+
+            // 保存当前输入供重新生成使用
+            window.currentStudyPlan = { subject, goal, days: parseInt(days) };
+
+            try {
+                const response = await fetch('/api/ai/study/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject, goal, days: parseInt(days) })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    // 保存计划内容
+                    window.currentPlanContent = data.plan;
+                    
+                    // 显示计划内容和按钮
+                    resultDiv.innerHTML = `
+                        <div style="background: #f0f9ff; padding: 20px; border-radius: 15px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">${data.plan}</div>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button onclick="acceptStudyPlan()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #52c41a 0%, #95de64 100%); color: white; border: none; border-radius: 15px; cursor: pointer; font-size: 15px; font-weight: 500;">
+                                ✅ 接受计划
+                            </button>
+                            <button onclick="generateStudyPlan()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #1890ff 0%, #69c9ff 100%); color: white; border: none; border-radius: 15px; cursor: pointer; font-size: 15px; font-weight: 500;">
+                                🔄 重新生成
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="text-align: center; color: #ff4d4f;">${data.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">❌ 服务暂时不可用</p>';
+            }
+        }
+
+        // 接受学习计划
+        async function acceptStudyPlan() {
+            if (!window.currentPlanContent) {
+                alert('请先生成学习计划');
+                return;
+            }
+
+            const resultDiv = document.getElementById('planResult');
+            resultDiv.innerHTML = '<p style="text-align: center; color: #666;">📝 正在添加学习记录...</p>';
+
+            try {
+                const response = await fetch('/api/ai/study/acceptPlan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        plan: window.currentPlanContent,
+                        subject: window.currentStudyPlan.subject
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
+                            <div style="color: #52c41a; font-size: 18px; font-weight: bold;">添加成功！</div>
+                            <div style="color: #666; margin-top: 10px;">已添加 ${data.added_count} 条学习记录</div>
+                            <button onclick="closeModal('studyPlanModal'); location.reload();" style="margin-top: 15px; padding: 10px 20px; background: #1890ff; color: white; border: none; border-radius: 15px; cursor: pointer;">
+                                查看记录
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="text-align: center; color: #ff4d4f;">${data.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">❌ 添加失败，请重试</p>';
+            }
+        }
+
+        // AI 效率分析
+        async function aiAnalyze() {
+            const modal = document.getElementById('analyzeModal');
+            const resultDiv = document.getElementById('analyzeResult');
+            modal.style.display = 'block';
+            resultDiv.innerHTML = '<p style="text-align: center; color: #666;">🤔 正在分析你的学习数据...</p>';
+
+            try {
+                const response = await fetch('/api/ai/study/analyze');
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div style="text-align: center; margin-bottom: 15px;">
+                            <span style="background: #f6ffed; padding: 8px 15px; border-radius: 20px; color: #52c41a; margin-right: 10px;">
+                                📅 最佳学习日: ${data.stats.best_day}
+                            </span>
+                            <span style="background: #e6f7ff; padding: 8px 15px; border-radius: 20px; color: #1890ff;">
+                                ⏱️ 总时长: ${data.stats.total_duration}分钟
+                            </span>
+                        </div>
+                        <div style="background: #f0f9ff; padding: 20px; border-radius: 15px;">
+                            ${data.analysis.replace(/\n/g, '<br>')}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="text-align: center; color: #ff4d4f;">${data.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">❌ 服务暂时不可用</p>';
+            }
+        }
+
+        // 打开错题辅导弹窗
+        function openWrongQuestion() {
+            document.getElementById('wrongQuestionModal').style.display = 'block';
+            document.getElementById('wrongQuestionResult').innerHTML = '';
+        }
+
+        // 保存当前错题数据
+        let currentWrongQuestion = null;
+
+        // 提交错题辅导
+        async function submitWrongQuestion() {
+            const question = document.getElementById('wrongQuestion').value.trim();
+            const subject = document.getElementById('wrongSubject').value.trim();
+            const userAnswer = document.getElementById('userAnswer').value.trim();
+            const resultDiv = document.getElementById('wrongQuestionResult');
+            const submitBtn = event.target;
+
+            if (!question) {
+                alert('请输入错题内容');
+                return;
+            }
+
+            // 显示loading状态
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '⏳ AI分析中...';
+            resultDiv.innerHTML = '<div style="text-align: center; padding: 30px;"><div style="font-size: 32px; margin-bottom: 15px;">🤔</div><div style="color: #666;">正在分析错题，请稍候...</div><div style="color: #999; font-size: 12px; margin-top: 10px;">AI正在思考中</div></div>';
+
+            try {
+                const response = await fetch('/api/ai/study/wrongQuestion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, subject, user_answer: userAnswer })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('网络错误');
+                }
+                
+                const data = await response.json();
+
+                if (data.success) {
+                    // 保存当前数据供后续使用
+                    currentWrongQuestion = {
+                        question: question,
+                        subject: subject,
+                        user_answer: userAnswer,
+                        explanation: data.explanation
+                    };
+                    
+                    resultDiv.innerHTML = `
+                        <div style="background: #fff7e6; padding: 20px; border-radius: 15px; white-space: pre-wrap;">${data.explanation}</div>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button onclick="saveToWrongQuestionSet()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #52c41a 0%, #95de64 100%); color: white; border: none; border-radius: 15px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                📚 加入错题集
+                            </button>
+                            <button onclick="regenerateWrongQuestion()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%); color: white; border: none; border-radius: 15px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                🔄 重新生成
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="text-align: center; color: #ff4d4f;">${data.message}</p>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `<div style="text-align: center; color: #ff4d4f; padding: 20px;">
+                    <div style="font-size: 32px; margin-bottom: 10px;">❌</div>
+                    <div>服务暂时不可用</div>
+                    <div style="font-size: 12px; color: #999; margin-top: 5px;">请稍后重试</div>
+                </div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '🔍 开始分析';
+            }
+        }
+
+        // 保存到错题集
+        async function saveToWrongQuestionSet() {
+            if (!currentWrongQuestion) {
+                alert('请先分析错题');
+                return;
+            }
+
+            const resultDiv = document.getElementById('wrongQuestionResult');
+
+            try {
+                const response = await fetch('/api/ai/study/saveWrongQuestion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subject: currentWrongQuestion.subject,
+                        question: currentWrongQuestion.question,
+                        user_answer: currentWrongQuestion.user_answer,
+                        ai_explanation: currentWrongQuestion.explanation
+                    })
+                });
+                
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
+                            <div style="color: #52c41a; font-size: 18px; font-weight: bold;">已保存到错题集！</div>
+                            <div style="color: #666; margin-top: 5px;">学科: ${currentWrongQuestion.subject || '未分类'}</div>
+                        </div>
+                    `;
+                } else {
+                    alert(data.message || '保存失败');
+                }
+            } catch (error) {
+                alert('保存失败，请重试');
+            }
+        }
+
+        // 重新生成
+        async function regenerateWrongQuestion() {
+            if (!currentWrongQuestion) {
+                alert('请先分析错题');
+                return;
+            }
+
+            const resultDiv = document.getElementById('wrongQuestionResult');
+            resultDiv.innerHTML = '<div style="text-align: center; padding: 30px;"><div style="font-size: 32px; margin-bottom: 15px;">🤔</div><div style="color: #666;">正在重新生成，请稍候...</div></div>';
+
+            try {
+                const response = await fetch('/api/ai/study/regenerateWrongQuestion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: currentWrongQuestion.question,
+                        subject: currentWrongQuestion.subject,
+                        user_answer: currentWrongQuestion.user_answer
+                    })
+                });
+                
+                const data = await response.json();
+
+                if (data.success) {
+                    // 更新保存的数据
+                    currentWrongQuestion.explanation = data.explanation;
+                    
+                    resultDiv.innerHTML = `
+                        <div style="background: #fff7e6; padding: 20px; border-radius: 15px; white-space: pre-wrap;">${data.explanation}</div>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button onclick="saveToWrongQuestionSet()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #52c41a 0%, #95de64 100%); color: white; border: none; border-radius: 15px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                📚 加入错题集
+                            </button>
+                            <button onclick="regenerateWrongQuestion()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%); color: white; border: none; border-radius: 15px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                🔄 重新生成
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    alert(data.message || '生成失败');
+                }
+            } catch (error) {
+                alert('生成失败，请重试');
+            }
+        }
     </script>
+
+    <!-- AI 学习计划弹窗 -->
+    <div id="studyPlanModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('studyPlanModal')">&times;</span>
+            <h2 style="color: #1890ff; margin-bottom: 20px;">📝 AI 学习计划</h2>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #333;">学习科目 *</label>
+                <input type="text" id="planSubject" class="form-input" placeholder="例如：英语、数学、编程">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #333;">学习目标（选填）</label>
+                <input type="text" id="planGoal" class="form-input" placeholder="例如：通过考试、提升口语">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #333;">计划天数</label>
+                <input type="number" id="planDays" class="form-input" style="margin-bottom: 0;" placeholder="输入天数，如：7" min="1" max="90" value="7">
+            </div>
+            <button onclick="generateStudyPlan()" class="btn-ai" style="background: linear-gradient(135deg, #1890ff 0%, #69c9ff 100%); width: 100%;">
+                🚀 生成学习计划
+            </button>
+            <div id="planResult" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <!-- AI 效率分析弹窗 -->
+    <div id="analyzeModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('analyzeModal')">&times;</span>
+            <h2 style="color: #52c41a; margin-bottom: 20px;">📈 AI 效率分析</h2>
+            <div id="analyzeResult">
+                <p style="text-align: center; color: #666;">🤔 正在分析...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 错题辅导弹窗 -->
+    <div id="wrongQuestionModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('wrongQuestionModal')">&times;</span>
+            <h2 style="color: #fa8c16; margin-bottom: 20px;">❌ AI 错题辅导</h2>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #333;">科目（选填）</label>
+                <input type="text" id="wrongSubject" class="form-input" placeholder="例如：数学、英语">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: 333;">错题内容 *</label>
+                <textarea id="wrongQuestion" class="form-input" placeholder="请输入错题题目"></textarea>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #333;">你的答案（选填）</label>
+                <textarea id="userAnswer" class="form-input" placeholder="请输入你的答案"></textarea>
+            </div>
+            <button onclick="submitWrongQuestion()" class="btn-ai" style="background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%); width: 100%;">
+                🔍 开始分析
+            </button>
+            <div id="wrongQuestionResult" style="margin-top: 20px;"></div>
+        </div>
+    </div>
 </body>
 </html>

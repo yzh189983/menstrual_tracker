@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>错题集 - 📚 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #fff7e6 0%, #fffaf0 50%, #fff7e6 100%);
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 120px;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%);
+            box-shadow: 0 4px 20px rgba(250, 140, 22, 0.4);
+            transition: all 0.3s ease;
+            border-radius: 0 0 25px 25px;
+            display: flex;
+            flex-direction: column;
+            padding: 60px 20px 15px;
+            min-height: auto;
+        }
+
+        .header.collapsed {
+            transform: translateY(-85%);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 20px;
+            border-radius: 0 0 10px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .expand-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 99;
+            background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%);
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            display: none;
+            font-size: 18px;
+        }
+
+        .expand-btn.show {
+            display: block;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 1.3em;
+        }
+
+        .logo {
+            font-size: 30px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-tab {
+            padding: 8px 15px;
+            border-radius: 15px;
+            text-decoration: none;
+            color: white;
+            background: rgba(255,255,255,0.2);
+            transition: all 0.3s;
+            font-size: 0.85em;
+        }
+
+        .nav-tab:hover, .nav-tab.active {
+            background: rgba(255,255,255,0.4);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-logout {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            background: white;
+            border-radius: 25px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(250, 140, 22, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-header h2 {
+            color: #fa8c16;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-action {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+
+        .btn-delete {
+            background: #ff4d4f;
+            color: white;
+        }
+
+        .btn-back {
+            background: #fa8c16;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 15px;
+        }
+
+        .filter-bar {
+            background: white;
+            border-radius: 20px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(250, 140, 22, 0.15);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-bar label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .filter-bar select {
+            padding: 8px 15px;
+            border: 2px solid #ffe6b8;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .subject-tag {
+            display: inline-block;
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+
+        .question-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 20px rgba(250, 140, 22, 0.15);
+            position: relative;
+        }
+
+        .question-card.selected {
+            border: 2px solid #fa8c16;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .question-meta {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-wrapper input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .question-content {
+            background: #fff7e6;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .question-content h4 {
+            color: #fa8c16;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .question-text {
+            color: #333;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .ai-explanation {
+            background: #f0f5ff;
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .ai-explanation h4 {
+            color: #1890ff;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .practice-question {
+            background: #f6ffed;
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 10px;
+            border-left: 4px solid #52c41a;
+        }
+
+        .practice-question h4 {
+            color: #52c41a;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .knowledge-points {
+            background: #fff0f6;
+            border-radius: 15px;
+            padding: 10px 15px;
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #eb2f96;
+        }
+
+        .question-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #ffe6b8;
+        }
+
+        .btn-edit, .btn-view {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .btn-edit {
+            background: #fa8c16;
+            color: white;
+        }
+
+        .btn-view {
+            background: #1890ff;
+            color: white;
+        }
+
+        .btn-delete-single {
+            background: #ff4d4f;
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state div {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 25px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            color: #fa8c16;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #fa8c16;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ffe6b8;
+            border-radius: 15px;
+            font-size: 15px;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #fa8c16;
+        }
+
+        textarea.form-input {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(250, 140, 22, 0.3);
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 15px 20px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+        }
+
+        .flash-success {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+
+        .flash-error {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+        }
+
+        .detail-view {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header" id="header">
+        <div class="header-top">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="logo">📚</span>
+                <h1>错题集</h1>
+            </div>
+            <div class="user-info">
+                <span style="color: white;">{{ user.username }}</span>
+                <a href="{{ url_for('study') }}"><button class="btn-logout">← 学习记录</button></a>
+                <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <a href="{{ url_for('index') }}" class="nav-tab">🌸 月经记录</a>
+            <a href="{{ url_for('study') }}" class="nav-tab">📚 学习记录</a>
+            <a href="{{ url_for('wrong_questions') }}" class="nav-tab active">📚 错题集</a>
+            <a href="{{ url_for('work') }}" class="nav-tab">💼 工作记录</a>
+            <a href="{{ url_for('all_calendar') }}" class="nav-tab">📅 总日历</a>
+            <a href="{{ url_for('chat') }}" class="nav-tab">💬 消息</a>
+            <a href="{{ url_for('feedback') }}" class="nav-tab">💭 反馈</a>
+        </div>
+        <button class="toggle-btn" onclick="toggleHeader()">▼</button>
+    </div>
+
+    <button class="expand-btn show" id="expandBtn" onclick="toggleHeader()">☰</button>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages container">
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="container">
+        <div class="page-header">
+            <h2>📚 错题集</h2>
+            <div class="header-actions">
+                <span style="color: #666;">共 {{ questions|length }} 道错题</span>
+                <button class="btn-action btn-delete" onclick="batchDelete()" style="display: none;" id="batchDeleteBtn">
+                    🗑️ 批量删除
+                </button>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <label>学科筛选：</label>
+            <a href="{{ url_for('wrong_questions') }}" class="btn-action {% if not subject_filter %}active{% endif %}" 
+               style="padding: 8px 15px; background: {% if not subject_filter %}#fa8c16{% else %}#ffe6b8{% endif %}; color: {% if not subject_filter %}white{% else %}#333{% endif %}; border-radius: 10px; text-decoration: none;">
+                全部
+            </a>
+            {% for subj in subjects %}
+            <a href="{{ url_for('wrong_questions', subject=subj) }}" class="btn-action" 
+               style="padding: 8px 15px; background: {% if subject_filter == subj %}#fa8c16{% else %}#ffe6b8{% endif %}; color: {% if subject_filter == subj %}white{% else %}#333{% endif %}; border-radius: 10px; text-decoration: none;">
+                {{ subj }}
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if questions %}
+            {% for q in questions %}
+            <div class="question-card" id="q-card-{{ q.id }}">
+                <div class="question-header">
+                    <div class="question-meta">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" class="q-checkbox" value="{{ q.id }}" onchange="toggleSelect()">
+                        </div>
+                        <span class="subject-tag">{{ q.subject }}</span>
+                        <span style="color: #999; font-size: 0.85em;">{{ q.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                </div>
+                
+                <div class="question-content">
+                    <h4>📝 错题题目</h4>
+                    <div class="question-text">{{ q.question }}</div>
+                </div>
+
+                {% if q.user_answer %}
+                <div class="question-content" style="background: #fff1f0;">
+                    <h4>❌ 你的答案</h4>
+                    <div class="question-text">{{ q.user_answer }}</div>
+                </div>
+                {% endif %}
+
+                {% if q.ai_explanation %}
+                <div class="ai-explanation">
+                    <h4>💡 AI 解答</h4>
+                    <div class="question-text">{{ q.ai_explanation }}</div>
+                </div>
+                {% endif %}
+
+                {% if q.knowledge_points %}
+                <div class="knowledge-points">
+                    <strong>📚 知识点：</strong>{{ q.knowledge_points }}
+                </div>
+                {% endif %}
+
+                {% if q.practice_question %}
+                <div class="practice-question">
+                    <h4>📖 练习题</h4>
+                    <div class="question-text">{{ q.practice_question }}</div>
+                </div>
+                {% endif %}
+
+                <div class="question-actions">
+                    <button class="btn-edit" onclick="editQuestion({{ q.id }})">✏️ 编辑</button>
+                    <button class="btn-view" onclick="viewQuestion({{ q.id }})">👁️ 查看详情</button>
+                    <button class="btn-delete-single" onclick="deleteQuestion({{ q.id }})">🗑️ 删除</button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div>📚</div>
+                <p>还没有错题记录</p>
+                <p style="color: #fa8c16; margin-top: 10px;">去学习记录页面添加错题吧！</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- 编辑弹窗 -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editModal')">&times;</span>
+            <h2>✏️ 编辑错题</h2>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>学科</label>
+                    <input type="text" id="editSubject" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>错题题目</label>
+                    <textarea id="editQuestion" class="form-input"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>你的答案</label>
+                    <textarea id="editUserAnswer" class="form-input"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>AI 解答</label>
+                    <textarea id="editAiExplanation" class="form-input" style="min-height: 120px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>知识点</label>
+                    <input type="text" id="editKnowledgePoints" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>练习题</label>
+                    <textarea id="editPracticeQuestion" class="form-input"></textarea>
+                </div>
+                <button type="submit" class="btn-submit">💾 保存修改</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 查看详情弹窗 -->
+    <div id="viewModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('viewModal')">&times;</span>
+            <h2>📚 错题详情</h2>
+            <div class="detail-view" id="viewContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let headerCollapsed = false;
+        
+        function toggleHeader() {
+            const header = document.getElementById('header');
+            const expandBtn = document.getElementById('expandBtn');
+            headerCollapsed = !headerCollapsed;
+            
+            if (headerCollapsed) {
+                header.classList.add('collapsed');
+                document.body.style.paddingTop = '60px';
+                expandBtn.classList.add('show');
+            } else {
+                header.classList.remove('collapsed');
+                document.body.style.paddingTop = '120px';
+                expandBtn.classList.remove('show');
+            }
+        }
+
+        // 选中的错题
+        function toggleSelect() {
+            const checkboxes = document.querySelectorAll('.q-checkbox:checked');
+            const btn = document.getElementById('batchDeleteBtn');
+            if (checkboxes.length > 0) {
+                btn.style.display = 'flex';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        // 批量删除
+        function batchDelete() {
+            const checkboxes = document.querySelectorAll('.q-checkbox:checked');
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (ids.length === 0) return;
+            
+            if (confirm(`确定要删除选中的 ${ids.length} 道错题吗？`)) {
+                const formData = new FormData();
+                formData.append('ids', ids.join(','));
+                
+                fetch('{{ url_for("batch_delete_wrong_questions") }}', {
+                    method: 'POST',
+                    body: formData
+                }).then(() => location.reload());
+            }
+        }
+
+        // 删除单个
+        function deleteQuestion(id) {
+            if (confirm('确定要删除这道错题吗？')) {
+                fetch('{{ url_for("delete_wrong_question", qid=0) }}'.replace('0', id), {
+                    method: 'POST'
+                }).then(() => location.reload());
+            }
+        }
+
+        // 编辑错题
+        function editQuestion(id) {
+            const card = document.getElementById('q-card-' + id);
+            const subject = card.querySelector('.subject-tag').textContent;
+            const question = card.querySelector('.question-text').textContent;
+            
+            document.getElementById('editId').value = id;
+            document.getElementById('editSubject').value = subject;
+            document.getElementById('editQuestion').value = question;
+            document.getElementById('editModal').style.display = 'block';
+            
+            // 尝试获取其他字段
+            const userAnswerEl = card.querySelector('.question-content:nth-of-type(2) .question-text');
+            if (userAnswerEl) {
+                document.getElementById('editUserAnswer').value = userAnswerEl.textContent;
+            }
+            
+            const aiExpEl = card.querySelector('.ai-explanation .question-text');
+            if (aiExpEl) {
+                document.getElementById('editAiExplanation').value = aiExpEl.textContent;
+            }
+        }
+
+        // 提交编辑
+        document.getElementById('editForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            
+            const formData = new FormData();
+            formData.append('subject', document.getElementById('editSubject').value);
+            formData.append('question', document.getElementById('editQuestion').value);
+            formData.append('user_answer', document.getElementById('editUserAnswer').value);
+            formData.append('ai_explanation', document.getElementById('editAiExplanation').value);
+            formData.append('knowledge_points', document.getElementById('editKnowledgePoints').value);
+            formData.append('practice_question', document.getElementById('editPracticeQuestion').value);
+            
+            fetch('{{ url_for("edit_wrong_question", qid=0) }}'.replace('0', id), {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || '保存失败');
+                }
+            });
+        });
+
+        // 查看详情
+        function viewQuestion(id) {
+            const card = document.getElementById('q-card-' + id);
+            const subject = card.querySelector('.subject-tag').textContent;
+            const date = card.querySelector('.question-meta span:last-child').textContent;
+            
+            let html = `
+                <div style="margin-bottom: 15px;">
+                    <span class="subject-tag">${subject}</span>
+                    <span style="color: #999; margin-left: 10px;">${date}</span>
+                </div>
+            `;
+            
+            const contents = card.querySelectorAll('.question-content, .ai-explanation, .practice-question, .knowledge-points');
+            contents.forEach(el => {
+                html += el.outerHTML;
+            });
+            
+            document.getElementById('viewContent').innerHTML = html;
+            document.getElementById('viewModal').style.display = 'block';
+        }
+
+        // 弹窗控制
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
