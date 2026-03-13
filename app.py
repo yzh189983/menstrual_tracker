@@ -9,6 +9,7 @@ import os
 import random
 import string
 import time
+import requests
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'menstrual-tracker-secret-key-2024'
@@ -28,6 +29,10 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['AVATAR_FOLDER'] = 'static/avatars'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# DeepSeek API 配置
+DEEPSEEK_API_KEY = "sk-438f7ee6c06f4f75b0eca2a7bb6106fa"
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['AVATAR_FOLDER'], exist_ok=True)
@@ -132,6 +137,20 @@ class ChatMessage(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
     receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
 
+# 错题集模型
+class WrongQuestion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    subject = db.Column(db.String(50))  # 学科
+    question = db.Column(db.Text, nullable=False)  # 错题题目
+    user_answer = db.Column(db.Text)  # 用户的答案
+    ai_explanation = db.Column(db.Text)  # AI的讲解
+    knowledge_points = db.Column(db.Text)  # 知识点
+    practice_question = db.Column(db.Text)  # 练习题
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    user = db.relationship('User', backref='wrong_questions')
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -201,6 +220,75 @@ def api_study_data():
             'notes': r.notes
         })
     return jsonify(data)
+
+# 错题集页面
+@app.route('/wrong_questions')
+@login_required
+def wrong_questions():
+    subject_filter = request.args.get('subject', '')
+    query = WrongQuestion.query.filter_by(user_id=current_user.id)
+    if subject_filter:
+        query = query.filter_by(subject=subject_filter)
+    questions = query.order_by(WrongQuestion.created_at.desc()).all()
+    
+    # 获取所有学科用于筛选
+    all_subjects = db.session.query(WrongQuestion.subject).filter_by(user_id=current_user.id).distinct().all()
+    subjects = [s[0] for s in all_subjects if s[0]]
+    
+    return render_template('wrong_questions.html', 
+                           questions=questions, 
+                           user=current_user,
+                           subject_filter=subject_filter,
+                           subjects=subjects)
+
+# 删除错题
+@app.route('/wrong_questions/delete/<int:qid>', methods=['POST'])
+@login_required
+def delete_wrong_question(qid):
+    question = WrongQuestion.query.get_or_404(qid)
+    if question.user_id == current_user.id:
+        db.session.delete(question)
+        db.session.commit()
+        flash('错题已删除', 'success')
+    return redirect(url_for('wrong_questions'))
+
+# 批量删除错题
+@app.route('/wrong_questions/batch_delete', methods=['POST'])
+@login_required
+def batch_delete_wrong_questions():
+    ids = request.form.get('ids', '').split(',')
+    deleted_count = 0
+    for id_str in ids:
+        if id_str.strip():
+            try:
+                qid = int(id_str.strip())
+                question = WrongQuestion.query.filter_by(id=qid, user_id=current_user.id).first()
+                if question:
+                    db.session.delete(question)
+                    deleted_count += 1
+            except:
+                pass
+    db.session.commit()
+    flash(f'已删除 {deleted_count} 道错题', 'success')
+    return redirect(url_for('wrong_questions'))
+
+# 编辑错题
+@app.route('/wrong_questions/edit/<int:qid>', methods=['POST'])
+@login_required
+def edit_wrong_question(qid):
+    question = WrongQuestion.query.get_or_404(qid)
+    if question.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权修改'})
+    
+    question.subject = request.form.get('subject', question.subject)
+    question.question = request.form.get('question', question.question)
+    question.user_answer = request.form.get('user_answer', question.user_answer)
+    question.ai_explanation = request.form.get('ai_explanation', question.ai_explanation)
+    question.knowledge_points = request.form.get('knowledge_points', question.knowledge_points)
+    question.practice_question = request.form.get('practice_question', question.practice_question)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '更新成功'})
 
 # 工作记录页面
 @app.route('/work')
@@ -824,6 +912,629 @@ def check_email():
     email = request.args.get('email')
     user = User.query.filter_by(email=email).first()
     return jsonify({'exists': user is not None})
+
+# ==================== AI 功能 ====================
+
+def call_deepseek(prompt, system_prompt=None):
+    """调用 DeepSeek API"""
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+    }
+    
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+    
+    data = {
+        "model": "deepseek-chat",
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 1000
+    }
+    
+    try:
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=60)
+        result = response.json()
+        return result['choices'][0]['message']['content']
+    except Exception as e:
+        return f"抱歉，AI服务暂时不可用: {str(e)}"
+
+# AI 预测经期
+@app.route('/api/ai/predict')
+@login_required
+def ai_predict_period():
+    """基于历史数据预测下次经期"""
+    periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).limit(10).all()
+    
+    if len(periods) < 2:
+        return jsonify({
+            'success': False,
+            'message': '需要至少2条经期记录才能进行预测'
+        })
+    
+    # 计算平均周期
+    cycles = []
+    for i in range(len(periods) - 1):
+        cycle = (periods[i].start_date - periods[i+1].start_date).days
+        cycles.append(cycle)
+    
+    avg_cycle = sum(cycles) / len(cycles)
+    last_period = periods[0]
+    predicted_date = last_period.start_date + timedelta(days=int(avg_cycle))
+    
+    # 准备历史数据给AI分析
+    history_text = "\n".join([
+        f"第{i+1}次: {p.start_date} 到 {p.end_date}, 经量: {p.flow}"
+        for i, p in enumerate(periods[:6])
+    ])
+    
+    system_prompt = """你是一个专业的经期健康助手。根据用户的历史经期记录，分析规律并给出预测和健康建议。
+请用温暖、关心的语气回复，回复使用中文。"""
+    
+    prompt = f"""用户的历史经期记录：
+{history_text}
+
+平均经期周期: {avg_cycle:.1f} 天
+最近一次经期开始日期: {last_period.start_date}
+预测下次经期开始日期: {predicted_date}
+
+请分析用户的经期规律，并给出：
+1. 预测的下次经期日期
+2. 经期健康建议（如饮食、运动、休息等）
+3. 注意事项
+
+请用简洁友好的方式回复。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'predicted_date': predicted_date.strftime('%Y-%m-%d'),
+        'avg_cycle': round(avg_cycle, 1),
+        'ai_analysis': ai_response
+    })
+
+# AI 健康建议
+@app.route('/api/ai/advice', methods=['POST'])
+@login_required
+def ai_get_advice():
+    """获取个性化健康建议"""
+    data = request.get_json()
+    user_input = data.get('question', '')
+    
+    # 获取用户最近的经期数据
+    periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).limit(3).all()
+    
+    history_text = "暂无记录"
+    if periods:
+        history_text = "\n".join([
+            f"- {p.start_date} 到 {p.end_date}, 经量: {p.flow}"
+            for p in periods
+        ])
+    
+    system_prompt = """你是一个专业、温暖的经期健康顾问。请根据用户的问题和经期历史记录，给出专业而贴心的建议。
+注意：如果用户询问的是医疗相关问题，请提醒用户咨询专业医生。"""
+    
+    prompt = f"""用户最近3次经期记录：
+{history_text}
+
+用户问题: {user_input}
+
+请根据用户的经期历史和当前问题，给出适合的建议。如果用户没有提供具体问题，请给出通用的经期健康建议。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'advice': ai_response
+    })
+
+# AI 聊天助手
+@app.route('/api/ai/chat', methods=['POST'])
+@login_required
+def ai_chat():
+    """AI 聊天助手"""
+    data = request.get_json()
+    message = data.get('message', '')
+    
+    if not message:
+        return jsonify({'success': False, 'message': '请输入内容'})
+    
+    # 获取用户历史记录作为上下文
+    periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).limit(5).all()
+    
+    history_text = "暂无记录"
+    if periods:
+        history_text = "\n".join([
+            f"- {p.start_date} 到 {p.end_date}, 经量: {p.flow}"
+            for p in periods
+        ])
+    
+    system_prompt = """你是一个温柔、专业、亲切的经期健康助手"小经"。你了解经期健康知识，能够回答用户关于经期的问题。
+请用轻松友好的语气聊天，适当使用emoji，回复控制在200字以内。"""
+    
+    prompt = f"""用户的经期历史记录：
+{history_text}
+
+用户说: {message}
+
+请以"小经"的身份回复用户。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'reply': ai_response
+    })
+
+# AI 周报生成
+@app.route('/api/ai/report')
+@login_required
+def ai_generate_report():
+    """生成经期健康报告"""
+    periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).limit(10).all()
+    
+    if not periods:
+        return jsonify({
+            'success': False,
+            'message': '暂无经期记录'
+        })
+    
+    # 计算统计数据
+    total_records = len(periods)
+    cycle_days = []
+    period_days = []
+    
+    for i in range(len(periods) - 1):
+        cycle_days.append((periods[i].start_date - periods[i+1].start_date).days)
+    
+    for p in periods:
+        period_days.append((p.end_date - p.start_date).days + 1)
+    
+    avg_cycle = sum(cycle_days) / len(cycle_days) if cycle_days else 28
+    avg_period = sum(period_days) / len(period_days)
+    
+    # 统计经量分布
+    flow_count = {'light': 0, 'medium': 0, 'heavy': 0}
+    for p in periods:
+        if p.flow in flow_count:
+            flow_count[p.flow] += 1
+    
+    history_text = "\n".join([
+        f"第{i+1}次: {p.start_date} 开始，持续 {((p.end_date - p.start_date).days + 1)} 天，经量: {p.flow}"
+        for i, p in enumerate(periods[:6])
+    ])
+    
+    system_prompt = """你是一个专业的经期健康分析师。根据用户的经期数据，生成一份详细的健康报告。
+请用清晰的结构化方式呈现，使用emoji让报告更生动。"""
+    
+    prompt = f"""请根据以下用户的经期数据，生成一份健康报告：
+
+历史记录：
+{history_text}
+
+统计数据：
+- 记录次数: {total_records} 次
+- 平均周期: {avg_cycle:.1f} 天
+- 平均经期时长: {avg_period:.1f} 天
+- 经量分布: 少量{flow_count['light']}次, 中等{flow_count['medium']}次, 大量{flow_count['heavy']}次
+
+请生成包括以下内容的健康报告：
+1. 周期分析 - 你的经期规律是否正常
+2. 健康评分 (1-10分)
+3. 存在的问题和建议
+4. 下次经期预测
+5. 温馨小贴士
+
+回复使用中文，报告结构清晰。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'report': ai_response,
+        'stats': {
+            'avg_cycle': round(avg_cycle, 1),
+            'avg_period': round(avg_period, 1),
+            'total_records': total_records
+        }
+    })
+
+# ==================== 学习 AI 功能 ====================
+
+# AI 学习计划生成
+@app.route('/api/ai/study/plan', methods=['POST'])
+@login_required
+def ai_study_plan():
+    """生成学习计划"""
+    data = request.get_json()
+    subject = data.get('subject', '')
+    goal = data.get('goal', '')
+    days = data.get('days', 7)
+    
+    if not subject:
+        return jsonify({'success': False, 'message': '请输入学习科目'})
+    
+    prompt = f"""请为用户生成一个{days}天的{subject}学习计划。
+
+用户目标: {goal if goal else '暂无具体目标'}
+
+请生成一个超级详细的学习计划，必须包含以下内容：
+
+📅 **第1天到第{days}天** 每天都需要有：
+1. 📖 学习内容：具体要学习的知识点或章节
+2. ⏱️ 学习时长：建议学习多少分钟
+3. 🎯 今日目标：今天要达成什么
+4. 💡 学习方法：用什么方法学习
+
+请严格按照以下表格格式输出：
+| 天数 | 学习内容 | 学习时长 | 今日目标 | 学习方法 |
+|------|----------|----------|----------|----------|
+| 第1天 | 内容 | X分钟 | 目标 | 方法 |
+| 第2天 | 内容 | X分钟 | 目标 | 方法 |
+...（依次列出所有{days}天）
+
+使用emoji让计划更生动，回复使用中文。"""
+    
+    system_prompt = """你是一个专业、耐心的学习顾问。你擅长制定学习计划，帮助用户高效学习。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'plan': ai_response
+    })
+
+# AI 学习效率分析
+@app.route('/api/ai/study/analyze')
+@login_required
+def ai_study_analyze():
+    """分析学习效率"""
+    records = StudyRecord.query.filter_by(user_id=current_user.id).order_by(StudyRecord.date.desc()).limit(20).all()
+    
+    if not records:
+        return jsonify({
+            'success': False,
+            'message': '暂无学习记录，无法分析'
+        })
+    
+    # 统计数据
+    total_duration = sum(r.duration for r in records)
+    subject_stats = {}
+    for r in records:
+        if r.subject not in subject_stats:
+            subject_stats[r.subject] = {'count': 0, 'duration': 0}
+        subject_stats[r.subject]['count'] += 1
+        subject_stats[r.subject]['duration'] += r.duration
+    
+    # 按星期几统计
+    weekday_stats = {i: 0 for i in range(7)}
+    for r in records:
+        weekday_stats[r.date.weekday()] += r.duration
+    
+    best_day = max(weekday_stats, key=weekday_stats.get)
+    weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+    
+    history_text = "\n".join([
+        f"- {r.date}: {r.subject}, {r.duration}分钟"
+        for r in records[:15]
+    ])
+    
+    prompt = f"""请分析用户的学习数据，找出学习规律和效率问题：
+
+学习记录：
+{history_text}
+
+统计数据：
+- 总学习时长: {total_duration} 分钟
+- 学习科目分布: {subject_stats}
+- 一周各天学习时长: {weekdays[best_day]}学习时长最长
+
+请给出：
+1. 学习效率评分 (1-10分)
+2. 学习习惯分析
+3. 存在的问题
+4. 改进建议
+5. 最佳学习时间建议
+
+回复使用中文，结构清晰。"""
+    
+    system_prompt = """你是一个专业的学习效率分析师。你擅长分析学习数据，发现学习规律和问题。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'analysis': ai_response,
+        'stats': {
+            'total_duration': total_duration,
+            'best_day': weekdays[best_day],
+            'subject_count': len(subject_stats)
+        }
+    })
+
+# AI 错题本辅导
+@app.route('/api/ai/study/wrongQuestion', methods=['POST'])
+@login_required
+def ai_wrong_question():
+    """AI 错题本辅导"""
+    data = request.get_json()
+    question = data.get('question', '')
+    subject = data.get('subject', '')
+    user_answer = data.get('user_answer', '')
+    
+    if not question:
+        return jsonify({'success': False, 'message': '请输入错题内容'})
+    
+    prompt = f"""用户有一道错题需要讲解：
+
+科目: {subject if subject else '未指定'}
+错题: {question}
+用户的答案: {user_answer if user_answer else '暂无'}
+
+请帮助用户：
+1. 分析这道题的知识点
+2. 找出用户的错误原因
+3. 给出正确的解题思路
+4. 讲解相关知识点
+5. 出一道类似的练习题
+
+请用通俗易懂的方式讲解，回复使用中文。"""
+    
+    system_prompt = """你是一个专业、耐心的学科辅导老师。你擅长讲解题目，分析错误原因，帮助学生掌握知识点。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'explanation': ai_response,
+        'subject': subject,
+        'question': question,
+        'user_answer': user_answer
+    })
+
+# 保存错题到错题集
+@app.route('/api/ai/study/saveWrongQuestion', methods=['POST'])
+@login_required
+def ai_save_wrong_question():
+    """保存错题到错题集"""
+    data = request.get_json()
+    subject = data.get('subject', '')
+    question = data.get('question', '')
+    user_answer = data.get('user_answer', '')
+    ai_explanation = data.get('ai_explanation', '')
+    
+    if not question:
+        return jsonify({'success': False, 'message': '请输入错题内容'})
+    
+    # 提取知识点和练习题
+    knowledge_points = ""
+    practice_question = ""
+    
+    # 简单解析AI回复，提取知识点和练习题
+    if "知识点" in ai_explanation:
+        try:
+            parts = ai_explanation.split("知识点")
+            if len(parts) > 1:
+                knowledge_part = parts[1].split("\n")[0]
+                knowledge_points = knowledge_part.strip()
+        except:
+            pass
+    
+    if "练习题" in ai_explanation or "类似题" in ai_explanation:
+        try:
+            for line in ai_explanation.split("\n"):
+                if "练习题" in line or "类似题" in line:
+                    practice_question = line.split("：")[-1] if "：" in line else line
+                    break
+        except:
+            pass
+    
+    wrong_q = WrongQuestion(
+        user_id=current_user.id,
+        subject=subject or '未分类',
+        question=question,
+        user_answer=user_answer,
+        ai_explanation=ai_explanation,
+        knowledge_points=knowledge_points,
+        practice_question=practice_question
+    )
+    db.session.add(wrong_q)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': '错题已保存到错题集',
+        'id': wrong_q.id
+    })
+
+# 重新生成错题解答
+@app.route('/api/ai/study/regenerateWrongQuestion', methods=['POST'])
+@login_required
+def ai_regenerate_wrong_question():
+    """重新生成错题解答"""
+    data = request.get_json()
+    question = data.get('question', '')
+    subject = data.get('subject', '')
+    user_answer = data.get('user_answer', '')
+    
+    if not question:
+        return jsonify({'success': False, 'message': '请输入错题内容'})
+    
+    prompt = f"""用户有一道错题需要讲解，请用不同的方式解答：
+
+科目: {subject if subject else '未指定'}
+错题: {question}
+用户的答案: {user_answer if user_answer else '暂无'}
+
+请用不同的解题思路和方法来讲解：
+1. 分析这道题涉及的知识点
+2. 详细讲解正确的解题方法
+3. 指出常见错误原因
+4. 总结解题技巧
+5.出一道不同类型的练习题
+
+请用通俗易懂、生动有趣的方式讲解，回复使用中文。"""
+    
+    system_prompt = """你是一个专业、耐心的学科辅导老师。你擅长用不同的方法讲解题目，帮助学生真正理解。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'explanation': ai_response
+    })
+
+# 获取错题集列表
+@app.route('/api/ai/study/wrongQuestions')
+@login_required
+def get_wrong_questions():
+    """获取错题集列表"""
+    subject = request.args.get('subject', '')
+    
+    query = WrongQuestion.query.filter_by(user_id=current_user.id)
+    if subject:
+        query = query.filter_by(subject=subject)
+    
+    questions = query.order_by(WrongQuestion.created_at.desc()).all()
+    
+    data = []
+    for q in questions:
+        data.append({
+            'id': q.id,
+            'subject': q.subject,
+            'question': q.question,
+            'user_answer': q.user_answer,
+            'ai_explanation': q.ai_explanation,
+            'knowledge_points': q.knowledge_points,
+            'practice_question': q.practice_question,
+            'created_at': q.created_at.strftime('%Y-%m-%d %H:%M')
+        })
+    
+    return jsonify({'success': True, 'questions': data})
+
+import re
+from datetime import datetime as dt
+
+# AI 接受学习计划
+@app.route('/api/ai/study/acceptPlan', methods=['POST'])
+@login_required
+def ai_accept_study_plan():
+    """接受AI生成的学习计划，批量添加学习记录"""
+    data = request.get_json()
+    plan_text = data.get('plan', '')
+    subject = data.get('subject', '')
+    
+    if not plan_text:
+        return jsonify({'success': False, 'message': '请先生成学习计划'})
+    
+    # 解析计划内容，提取每天的学习内容
+    # 匹配类似 "第1天" 或 "Day 1" 或 "1." 的模式
+    pattern = r'(?:第\s*(\d+)\s*天|Day\s*(\d+)|(\d+)\.)'
+    matches = re.findall(pattern, plan_text)
+    
+    if not matches:
+        return jsonify({'success': False, 'message': '无法解析学习计划格式'})
+    
+    added_count = 0
+    today = dt.now().date()
+    
+    # 解析计划内容，提取每天的学习内容
+    lines = plan_text.split('\n')
+    daily_plans = []
+    max_day = 0
+    
+    # 首先找出总天数
+    for line in lines:
+        day_match = re.search(r'第\s*(\d+)\s*天', line)
+        if day_match:
+            day_num = int(day_match.group(1))
+            max_day = max(max_day, day_num)
+    
+    if max_day == 0:
+        return jsonify({'success': False, 'message': '无法解析学习计划格式'})
+    
+    # 解析每天的内容
+    for line in lines:
+        day_match = re.search(r'第\s*(\d+)\s*天', line)
+        if day_match:
+            day_num = int(day_match.group(1))
+            
+            # 提取学习时长 - 查找表格中的分钟数
+            duration = 60  # 默认60分钟
+            minute_match = re.search(r'(\d+)\s*分钟', line)
+            if minute_match:
+                duration = int(minute_match.group(1))
+            
+            # 提取学习内容 - 查找 "| 内容 |" 格式
+            content = ""
+            parts = line.split('|')
+            if len(parts) >= 3:
+                # 第二列通常是学习内容
+                content = parts[2].strip() if parts[2].strip() else f"第{day_num}天学习"
+            else:
+                # 尝试从文本中提取
+                content = line.replace(f'第{day_num}天', '').strip()
+                if not content:
+                    content = f"第{day_num}天学习"
+            
+            # 提取学习目标
+            goal = ""
+            if len(parts) >= 5:
+                goal = parts[4].strip()
+            
+            # 提取学习方法
+            method = ""
+            if len(parts) >= 6:
+                method = parts[5].strip()
+            
+            # 组合学习内容
+            plan_content = f"📖 {content}"
+            if goal:
+                plan_content += f"\n🎯 目标: {goal}"
+            if method:
+                plan_content += f"\n💡 方法: {method}"
+            
+            daily_plans.append({
+                'day': day_num,
+                'duration': duration,
+                'content': plan_content
+            })
+    
+    if not daily_plans:
+        return jsonify({'success': False, 'message': '无法解析学习计划格式'})
+    
+    added_count = 0
+    
+    # 只添加不超过max_day天的记录
+    for plan_info in daily_plans:
+        if plan_info['day'] > max_day:
+            continue
+            
+        # 计划日期从今天开始
+        plan_date = today + timedelta(days=plan_info['day'] - 1)
+        
+        # 创建学习记录
+        record = StudyRecord(
+            user_id=current_user.id,
+            date=plan_date,
+            subject=subject or '学习',
+            duration=plan_info['duration'],
+            plan=plan_info['content'],
+            notes='AI生成学习计划'
+        )
+        db.session.add(record)
+        added_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'added_count': added_count,
+        'message': f'成功添加 {added_count} 条学习记录'
+    })
 
 if __name__ == '__main__':
     with app.app_context():
