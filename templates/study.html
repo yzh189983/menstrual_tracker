@@ -644,19 +644,24 @@
         </div>
 
         <div class="records-card" style="margin-top: 25px;">
-            <h3>📋 历史记录</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>📋 历史记录</h3>
+                <button onclick="selectAllStudy()" style="padding: 8px 15px; background: #1890ff; color: white; border: none; border-radius: 10px; cursor: pointer;">全选</button>
+            </div>
             {% if records %}
                 {% for record in records|reverse %}
-                <div class="record-item">
+                <div class="record-item" id="study-{{ record.id }}">
                     <div class="record-date">
+                        <input type="checkbox" class="study-checkbox" value="{{ record.id }}" style="margin-right: 10px;">
                         📅 {{ record.date.strftime('%Y-%m-%d') }} 
                         <span style="color: #1890ff; margin-left: 10px;">{{ record.subject }}</span>
                     </div>
                     <div class="record-details">
                         <span>⏱️ {{ record.duration }} 分钟</span>
-                        <a href="{{ url_for('delete_study', record_id=record.id) }}">
-                            <button class="btn-delete">删除</button>
-                        </a>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="editStudy({{ record.id }}, '{{ record.subject }}', {{ record.duration }}, '{{ record.date }}', '{{ record.plan or '' }}', '{{ record.notes or '' }}')" style="padding: 5px 10px; background: #1890ff; color: white; border: none; border-radius: 8px; cursor: pointer;">✏️ 编辑</button>
+                            <button onclick="deleteStudy({{ record.id }})" style="padding: 5px 10px; background: #ff4d4f; color: white; border: none; border-radius: 8px; cursor: pointer;">🗑️ 删除</button>
+                        </div>
                     </div>
                     {% if record.plan %}
                     <div style="color: #8ec8ff; font-size: 0.9em; margin-top: 8px;">
@@ -670,6 +675,7 @@
                     {% endif %}
                 </div>
                 {% endfor %}
+                <button onclick="deleteSelectedStudy()" style="margin-top: 15px; padding: 10px 20px; background: #ff4d4f; color: white; border: none; border-radius: 10px; cursor: pointer;">🗑️ 批量删除选中</button>
             {% else %}
                 <div class="empty-state">
                     <p>还没有学习记录哦～</p>
@@ -1132,5 +1138,112 @@
             <div id="wrongQuestionResult" style="margin-top: 20px;"></div>
         </div>
     </div>
+
+    <!-- 编辑学习记录弹窗 -->
+    <div id="editStudyModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('editStudyModal').style.display='none'">&times;</span>
+            <h2 style="color: #1890ff; margin-bottom: 20px;">✏️ 编辑学习记录</h2>
+            <form id="editStudyForm">
+                <input type="hidden" id="editStudyId">
+                <div class="form-group">
+                    <label>📅 日期</label>
+                    <input type="date" id="editStudyDate" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>📖 科目</label>
+                    <input type="text" id="editStudySubject" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>⏱️ 时长（分钟）</label>
+                    <input type="number" id="editStudyDuration" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>📝 计划</label>
+                    <textarea id="editStudyPlan" class="form-input" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>💭 备注</label>
+                    <textarea id="editStudyNotes" class="form-input" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn-ai" style="background: #1890ff; width: 100%;">💾 保存修改</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div id="deleteStudyModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 style="color: #ff4d4f; margin-bottom: 20px;">⚠️ 确认删除</h2>
+            <p id="deleteStudyMsg" style="margin-bottom: 20px; font-size: 16px;">确定要删除这条记录吗？</p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button onclick="confirmDeleteStudy()" style="padding: 12px 30px; background: #ff4d4f; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px;">🗑️ 删除</button>
+                <button onclick="document.getElementById('deleteStudyModal').style.display='none'" style="padding: 12px 30px; background: #ccc; color: #333; border: none; border-radius: 10px; cursor: pointer; font-size: 16px;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 编辑学习记录
+        let studyDeleteId = null;
+        function editStudy(id, subject, duration, date, plan, notes) {
+            document.getElementById('editStudyId').value = id;
+            document.getElementById('editStudyDate').value = date;
+            document.getElementById('editStudySubject').value = subject;
+            document.getElementById('editStudyDuration').value = duration;
+            document.getElementById('editStudyPlan').value = plan || '';
+            document.getElementById('editStudyNotes').value = notes || '';
+            document.getElementById('editStudyModal').style.display = 'block';
+        }
+
+        document.getElementById('editStudyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editStudyId').value;
+            const formData = new FormData();
+            formData.append('subject', document.getElementById('editStudySubject').value);
+            formData.append('duration', document.getElementById('editStudyDuration').value);
+            formData.append('date', document.getElementById('editStudyDate').value);
+            formData.append('plan', document.getElementById('editStudyPlan').value);
+            formData.append('notes', document.getElementById('editStudyNotes').value);
+
+            try {
+                const response = await fetch('/study/edit/' + id, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert(data.message || '更新失败');
+            } catch (error) {
+                alert('更新失败，请重试');
+            }
+        });
+
+        // 删除学习记录
+        function deleteStudy(id) {
+            studyDeleteId = id;
+            document.getElementById('deleteStudyMsg').textContent = '确定要删除这条学习记录吗？此操作不可恢复！';
+            document.getElementById('deleteStudyModal').style.display = 'block';
+        }
+
+        function confirmDeleteStudy() {
+            if (studyDeleteId) window.location.href = '/study/delete/' + studyDeleteId;
+        }
+
+        // 全选
+        function selectAllStudy() {
+            const checkboxes = document.querySelectorAll('.study-checkbox');
+            const allChecked = Array.from(checkboxes).every(c => c.checked);
+            checkboxes.forEach(c => c.checked = !allChecked);
+        }
+
+        // 批量删除
+        function deleteSelectedStudy() {
+            const checkboxes = document.querySelectorAll('.study-checkbox:checked');
+            if (checkboxes.length === 0) { alert('请先选择要删除的记录'); return; }
+            if (confirm('确定要删除选中的 ' + checkboxes.length + ' 条记录吗？此操作不可恢复！')) {
+                const formData = new FormData();
+                formData.append('ids', Array.from(checkboxes).map(c => c.value).join(','));
+                fetch('/study/batch_delete', { method: 'POST', body: formData }).then(() => location.reload());
+            }
+        }
+    </script>
 </body>
 </html>

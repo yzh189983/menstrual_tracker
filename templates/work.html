@@ -438,6 +438,78 @@
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
+
+        /* AI 按钮样式 */
+        .btn-ai {
+            border: none;
+            padding: 14px 20px;
+            border-radius: 15px;
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .btn-ai:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 25px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal .close:hover {
+            color: #fa8c16;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ffe6b8;
+            border-radius: 15px;
+            font-size: 15px;
+            font-family: 'Noto Sans SC', sans-serif;
+            margin-bottom: 15px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #fa8c16;
+        }
     </style>
 </head>
 <body>
@@ -549,15 +621,35 @@
                         <span class="stat-value">{% if records|length > 0 %}{{ records|sum(attribute='overtime') }} 分钟{% else %}0 分钟{% endif %}</span>
                     </div>
                 </div>
+
+                <!-- AI 工作助手 -->
+                <div class="stats-card" style="margin-top: 20px; background: linear-gradient(135deg, #fff7e6 0%, #fffaf0 100%);">
+                    <h3>🤖 AI 工作助手</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                        <button class="btn-ai" onclick="openWorkPlan()" style="background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%);">
+                            📝 AI 工作计划
+                        </button>
+                        <button class="btn-ai" onclick="aiAnalyze()" style="background: linear-gradient(135deg, #f5222d 0%, #ff7875 100%);">
+                            📈 AI 加班分析
+                        </button>
+                        <button class="btn-ai" onclick="aiWeeklyReport()" style="background: linear-gradient(135deg, #722ed1 0%, #b37feb 100%);">
+                            📊 AI 工作周报
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="records-card" style="margin-top: 25px;">
-            <h3>📋 历史记录</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>📋 历史记录</h3>
+                <button onclick="selectAllRecords()" style="padding: 8px 15px; background: #fa8c16; color: white; border: none; border-radius: 10px; cursor: pointer;">全选</button>
+            </div>
             {% if records %}
                 {% for record in records|reverse %}
-                <div class="record-item">
+                <div class="record-item" id="record-{{ record.id }}">
                     <div class="record-date">
+                        <input type="checkbox" class="record-checkbox" value="{{ record.id }}" style="margin-right: 10px;">
                         📅 {{ record.date.strftime('%Y-%m-%d') }} 
                         <span style="color: #fa8c16; margin-left: 10px;">{{ record.task }}</span>
                     </div>
@@ -571,9 +663,10 @@
                             | 🌙 加班: {{ record.overtime }}分钟
                             {% endif %}
                         </span>
-                        <a href="{{ url_for('delete_work', record_id=record.id) }}">
-                            <button class="btn-delete">删除</button>
-                        </a>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="editRecord({{ record.id }}, '{{ record.task }}', {{ record.task_duration }}, '{{ record.work_start or '' }}', '{{ record.work_end or '' }}', '{{ record.notes or '' }}')" style="padding: 5px 10px; background: #1890ff; color: white; border: none; border-radius: 8px; cursor: pointer;">✏️ 编辑</button>
+                            <button onclick="deleteRecord({{ record.id }})" style="padding: 5px 10px; background: #ff4d4f; color: white; border: none; border-radius: 8px; cursor: pointer;">🗑️ 删除</button>
+                        </div>
                     </div>
                     {% if record.notes %}
                     <div style="color: #ff9c6e; font-size: 0.9em; margin-top: 5px;">
@@ -582,6 +675,7 @@
                     {% endif %}
                 </div>
                 {% endfor %}
+                <button onclick="deleteSelected()" style="margin-top: 15px; padding: 10px 20px; background: #ff4d4f; color: white; border: none; border-radius: 10px; cursor: pointer;">🗑️ 批量删除选中</button>
             {% else %}
                 <div class="empty-state">
                     <p>还没有工作记录哦～</p>
@@ -666,6 +760,267 @@
                 document.getElementById('expandBtn').classList.add('show');
             }
         });
+
+        // ==================== AI 工作功能 ====================
+        
+        let currentWorkPlan = null;
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function openWorkPlan() {
+            document.getElementById('workPlanModal').style.display = 'block';
+            document.getElementById('planResult').innerHTML = '';
+        }
+
+        async function generateWorkPlan() {
+            const task = document.getElementById('planTask').value.trim();
+            const goal = document.getElementById('planGoal').value.trim();
+            const days = document.getElementById('planDays').value || 7;
+            const resultDiv = document.getElementById('planResult');
+
+            if (!task) { alert('请输入工作任务'); return; }
+
+            resultDiv.innerHTML = '<p style="text-align: center; color: #666;">🤔 正在生成工作计划...</p>';
+            currentWorkPlan = { task, goal, days: parseInt(days) };
+
+            try {
+                const response = await fetch('/api/ai/work/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task, goal, days: parseInt(days) })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    window.currentPlanContent = data.plan;
+                    resultDiv.innerHTML = '<div style="background: #fff7e6; padding: 20px; border-radius: 15px; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">' + data.plan + '</div><div style="display: flex; gap: 10px; margin-top: 15px;"><button onclick="acceptWorkPlan()" style="flex: 1; padding: 12px; background: #52c41a; color: white; border: none; border-radius: 15px; cursor: pointer;">✅ 接受计划</button><button onclick="generateWorkPlan()" style="flex: 1; padding: 12px; background: #fa8c16; color: white; border: none; border-radius: 15px; cursor: pointer;">🔄 重新生成</button></div>';
+                } else {
+                    resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">' + data.message + '</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">❌ 服务暂时不可用</p>';
+            }
+        }
+
+        async function acceptWorkPlan() {
+            if (!window.currentPlanContent) { alert('请先生成工作计划'); return; }
+
+            const resultDiv = document.getElementById('planResult');
+            resultDiv.innerHTML = '<p style="text-align: center; color: #666;">📝 正在添加工作记录...</p>';
+
+            try {
+                const response = await fetch('/api/ai/work/acceptPlan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: window.currentPlanContent, task: currentWorkPlan.task })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><div style="font-size: 48px;">🎉</div><div style="color: #52c41a;">添加成功！已添加 ' + data.added_count + ' 条工作记录</div></div>';
+                } else {
+                    resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">' + data.message + '</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">❌ 添加失败</p>';
+            }
+        }
+
+        async function aiAnalyze() {
+            const modal = document.getElementById('analyzeModal');
+            const resultDiv = document.getElementById('analyzeResult');
+            modal.style.display = 'block';
+            resultDiv.innerHTML = '<p style="text-align: center; color: #666;">🤔 正在分析...</p>';
+
+            try {
+                const response = await fetch('/api/ai/work/analyze');
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = '<div style="background: #fff7e6; padding: 20px; border-radius: 15px;">' + data.analysis.replace(/\n/g, '<br>') + '</div>';
+                } else {
+                    resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">' + data.message + '</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">❌ 服务暂时不可用</p>';
+            }
+        }
+
+        async function aiWeeklyReport() {
+            const modal = document.getElementById('reportModal');
+            const resultDiv = document.getElementById('reportResult');
+            modal.style.display = 'block';
+            resultDiv.innerHTML = '<p style="text-align: center; color: #666;">🤔 正在生成周报...</p>';
+
+            try {
+                const response = await fetch('/api/ai/work/weeklyReport');
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = '<div style="background: #f9f0ff; padding: 20px; border-radius: 15px; white-space: pre-wrap;">' + data.report + '</div>';
+                } else {
+                    resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">' + data.message + '</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="text-align: center; color: #ff4d4f;">❌ 服务暂时不可用</p>';
+            }
+        }
+    </script>
+
+    <!-- AI 工作计划弹窗 -->
+    <div id="workPlanModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('workPlanModal')">&times;</span>
+            <h2 style="color: #fa8c16; margin-bottom: 20px;">📝 AI 工作计划</h2>
+            <input type="text" id="planTask" class="form-input" placeholder="工作任务 *">
+            <input type="text" id="planGoal" class="form-input" placeholder="工作目标（选填）">
+            <input type="number" id="planDays" class="form-input" placeholder="计划天数" value="7" min="1" max="90">
+            <button onclick="generateWorkPlan()" class="btn-ai" style="background: linear-gradient(135deg, #fa8c16 0%, #ffc069 100%); width: 100%;">🚀 生成工作计划</button>
+            <div id="planResult" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <!-- AI 加班分析弹窗 -->
+    <div id="analyzeModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('analyzeModal')">&times;</span>
+            <h2 style="color: #f5222d; margin-bottom: 20px;">📈 AI 加班分析</h2>
+            <div id="analyzeResult"></div>
+        </div>
+    </div>
+
+    <!-- AI 工作周报弹窗 -->
+    <div id="reportModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close" onclick="closeModal('reportModal')">&times;</span>
+            <h2 style="color: #722ed1; margin-bottom: 20px;">📊 AI 工作周报</h2>
+            <div id="reportResult"></div>
+        </div>
+    </div>
+
+    <!-- 编辑记录弹窗 -->
+    <div id="editModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editModal')">&times;</span>
+            <h2 style="color: #1890ff; margin-bottom: 20px;">✏️ 编辑工作记录</h2>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>📋 任务</label>
+                    <input type="text" id="editTask" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>⏱️ 时长（分钟）</label>
+                    <input type="number" id="editDuration" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>🕐 开始时间</label>
+                    <input type="time" id="editStart" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>🕐 结束时间</label>
+                    <input type="time" id="editEnd" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>💭 备注</label>
+                    <textarea id="editNotes" class="form-input" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn-ai" style="background: #1890ff; width: 100%;">💾 保存修改</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div id="deleteModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 style="color: #ff4d4f; margin-bottom: 20px;">⚠️ 确认删除</h2>
+            <p id="deleteMsg" style="margin-bottom: 20px; font-size: 16px;">确定要删除这条记录吗？</p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button onclick="confirmDelete()" style="padding: 12px 30px; background: #ff4d4f; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px;">🗑️ 删除</button>
+                <button onclick="closeModal('deleteModal')" style="padding: 12px 30px; background: #ccc; color: #333; border: none; border-radius: 10px; cursor: pointer; font-size: 16px;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 编辑记录
+        function editRecord(id, task, duration, start, end, notes) {
+            document.getElementById('editId').value = id;
+            document.getElementById('editTask').value = task;
+            document.getElementById('editDuration').value = duration;
+            document.getElementById('editStart').value = start;
+            document.getElementById('editEnd').value = end;
+            document.getElementById('editNotes').value = notes || '';
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        // 提交编辑
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const formData = new FormData();
+            formData.append('task', document.getElementById('editTask').value);
+            formData.append('task_duration', document.getElementById('editDuration').value);
+            formData.append('work_start', document.getElementById('editStart').value);
+            formData.append('work_end', document.getElementById('editEnd').value);
+            formData.append('notes', document.getElementById('editNotes').value);
+
+            try {
+                const response = await fetch('/work/edit/' + id, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || '更新失败');
+                }
+            } catch (error) {
+                alert('更新失败，请重试');
+            }
+        });
+
+        // 删除记录
+        let deleteId = null;
+        function deleteRecord(id) {
+            deleteId = id;
+            document.getElementById('deleteMsg').textContent = '确定要删除这条工作记录吗？此操作不可恢复！';
+            document.getElementById('deleteModal').style.display = 'block';
+        }
+
+        function confirmDelete() {
+            if (deleteId) {
+                window.location.href = '/work/delete/' + deleteId;
+            }
+        }
+
+        // 全选
+        function selectAllRecords() {
+            const checkboxes = document.querySelectorAll('.record-checkbox');
+            const allChecked = Array.from(checkboxes).every(c => c.checked);
+            checkboxes.forEach(c => c.checked = !allChecked);
+        }
+
+        // 批量删除
+        function deleteSelected() {
+            const checkboxes = document.querySelectorAll('.record-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert('请先选择要删除的记录');
+                return;
+            }
+            const ids = Array.from(checkboxes).map(c => c.value).join(',');
+            if (confirm('确定要删除选中的 ' + checkboxes.length + ' 条记录吗？此操作不可恢复！')) {
+                const formData = new FormData();
+                formData.append('ids', ids);
+                fetch('/work/batch_delete', {
+                    method: 'POST',
+                    body: formData
+                }).then(() => location.reload());
+            }
+        }
     </script>
 </body>
 </html>

@@ -741,11 +741,15 @@
 
                 <!-- 记录列表 -->
                 <div class="records-card">
-                    <h3>📋 历史记录</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>📋 历史记录</h3>
+                        <button onclick="selectAllPeriods()" style="padding: 8px 15px; background: #ff6b9d; color: white; border: none; border-radius: 10px; cursor: pointer;">全选</button>
+                    </div>
                     {% if periods %}
                         {% for period in periods|reverse %}
-                        <div class="record-item">
+                        <div class="record-item" id="period-{{ period.id }}">
                             <div class="record-dates">
+                                <input type="checkbox" class="period-checkbox" value="{{ period.id }}" style="margin-right: 10px;">
                                 {{ period.start_date.strftime('%Y-%m-%d') }} ~ {{ period.end_date.strftime('%Y-%m-%d') }}
                                 <span style="font-size: 0.85em; color: #ff6b9d; margin-left: 10px;">
                                     ({{ ((period.end_date - period.start_date).days + 1) }}天)
@@ -757,9 +761,10 @@
                                     {% elif period.flow == 'medium' %}💕 中等
                                     {% else %}🔴 大量{% endif %}
                                 </span>
-                                <a href="{{ url_for('delete_period', period_id=period.id) }}">
-                                    <button class="btn-delete">删除</button>
-                                </a>
+                                <div style="display: flex; gap: 10px;">
+                                    <button onclick="editPeriod({{ period.id }}, '{{ period.start_date }}', '{{ period.end_date }}', '{{ period.flow }}', '{{ period.notes or '' }}')" style="padding: 5px 10px; background: #1890ff; color: white; border: none; border-radius: 8px; cursor: pointer;">✏️ 编辑</button>
+                                    <button onclick="deletePeriod({{ period.id }})" style="padding: 5px 10px; background: #ff4d4f; color: white; border: none; border-radius: 8px; cursor: pointer;">🗑️ 删除</button>
+                                </div>
                             </div>
                             {% if period.notes %}
                             <div style="color: #ff8fab; font-size: 0.85em; margin-top: 8px;">
@@ -768,6 +773,7 @@
                             {% endif %}
                         </div>
                         {% endfor %}
+                        <button onclick="deleteSelectedPeriods()" style="margin-top: 15px; padding: 10px 20px; background: #ff4d4f; color: white; border: none; border-radius: 10px; cursor: pointer;">🗑️ 批量删除选中</button>
                     {% else %}
                         <p style="color: #ff8fab; text-align: center; padding: 20px;">还没有记录哦～</p>
                     {% endif %}
@@ -1306,6 +1312,115 @@
                 resultDiv.innerHTML = '<p style="text-align: center; color: #e63950;">❌ 服务暂时不可用，请稍后重试</p>';
             }
         }
+
+        // 编辑经期记录
+        function editPeriod(id, start, end, flow, notes) {
+            document.getElementById('editId').value = id;
+            document.getElementById('editStart').value = start;
+            document.getElementById('editEnd').value = end;
+            document.getElementById('editFlow').value = flow;
+            document.getElementById('editNotes').value = notes || '';
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const formData = new FormData();
+            formData.append('start_date', document.getElementById('editStart').value);
+            formData.append('end_date', document.getElementById('editEnd').value);
+            formData.append('flow', document.getElementById('editFlow').value);
+            formData.append('notes', document.getElementById('editNotes').value);
+
+            try {
+                const response = await fetch('/edit/' + id, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) location.reload();
+                else alert(data.message || '更新失败');
+            } catch (error) {
+                alert('更新失败，请重试');
+            }
+        });
+
+        // 删除经期记录
+        let deleteId = null;
+        function deletePeriod(id) {
+            console.log('deletePeriod called, id:', id);
+            deleteId = id;
+            var modal = document.getElementById('deleteModal');
+            if (modal) {
+                document.getElementById('deleteMsg').textContent = '确定要删除这条经期记录吗？此操作不可恢复！';
+                modal.style.display = 'block';
+            } else {
+                alert('确定要删除这条经期记录吗？');
+                window.location.href = '/delete/' + id;
+            }
+        }
+
+        function confirmDelete() {
+            if (deleteId) window.location.href = '/delete/' + deleteId;
+        }
+
+        function selectAllPeriods() {
+            const checkboxes = document.querySelectorAll('.period-checkbox');
+            const allChecked = Array.from(checkboxes).every(c => c.checked);
+            checkboxes.forEach(c => c.checked = !allChecked);
+        }
+
+        function deleteSelectedPeriods() {
+            const checkboxes = document.querySelectorAll('.period-checkbox:checked');
+            if (checkboxes.length === 0) { alert('请先选择要删除的记录'); return; }
+            const ids = Array.from(checkboxes).map(c => c.value).join(',');
+            if (confirm('确定要删除选中的 ' + checkboxes.length + ' 条记录吗？此操作不可恢复！')) {
+                const formData = new FormData();
+                formData.append('ids', ids);
+                fetch('/batch_delete', { method: 'POST', body: formData }).then(() => location.reload());
+            }
+        }
     </script>
+
+    <!-- 编辑弹窗 -->
+    <div id="editModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('editModal').style.display='none'">&times;</span>
+            <h2 style="color: #ff6b9d; margin-bottom: 20px;">✏️ 编辑记录</h2>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>🌺 开始日期</label>
+                    <input type="date" id="editStart" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>🌸 结束日期</label>
+                    <input type="date" id="editEnd" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>💧 经量</label>
+                    <select id="editFlow" class="form-input">
+                        <option value="light">🌸 少量</option>
+                        <option value="medium">💕 中等</option>
+                        <option value="heavy">🔴 大量</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>📝 备注</label>
+                    <textarea id="editNotes" class="form-input" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn-submit">💖 保存修改</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div id="deleteModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 style="color: #ff4d4f; margin-bottom: 20px;">⚠️ 确认删除</h2>
+            <p id="deleteMsg" style="margin-bottom: 20px; font-size: 16px;">确定要删除这条记录吗？</p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button onclick="confirmDelete()" style="padding: 12px 30px; background: #ff4d4f; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px;">🗑️ 删除</button>
+                <button onclick="document.getElementById('deleteModal').style.display='none'" style="padding: 12px 30px; background: #ccc; color: #333; border: none; border-radius: 10px; cursor: pointer; font-size: 16px;">取消</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
