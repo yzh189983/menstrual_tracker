@@ -70,6 +70,8 @@ class Period(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     flow = db.Column(db.String(20), default='medium')
+    pain_level = db.Column(db.Integer, default=0)  # 疼痛等级 0-10
+    symptoms = db.Column(db.String(200))  # 症状，多个用逗号分隔
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -160,7 +162,7 @@ def load_user(user_id):
 @login_required
 def index():
     periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).all()
-    return render_template('calendar.html', periods=periods, user=current_user, timedelta=timedelta)
+    return render_template('calendar.html', periods=periods, user=current_user, timedelta=timedelta, datetime=datetime)
 
 # 学习记录页面
 @app.route('/study')
@@ -202,6 +204,43 @@ def delete_study(record_id):
         db.session.delete(record)
         db.session.commit()
         flash('学习记录已删除', 'success')
+    return redirect(url_for('study'))
+
+# 编辑学习记录
+@app.route('/study/edit/<int:record_id>', methods=['POST'])
+@login_required
+def edit_study(record_id):
+    record = StudyRecord.query.get_or_404(record_id)
+    if record.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权修改'})
+    
+    record.subject = request.form.get('subject', record.subject)
+    record.duration = int(request.form.get('duration', record.duration))
+    record.date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
+    record.plan = request.form.get('plan', record.plan)
+    record.notes = request.form.get('notes', record.notes)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '更新成功'})
+
+# 批量删除学习记录
+@app.route('/study/batch_delete', methods=['POST'])
+@login_required
+def batch_delete_study():
+    ids = request.form.get('ids', '').split(',')
+    deleted_count = 0
+    for id_str in ids:
+        if id_str.strip():
+            try:
+                rid = int(id_str.strip())
+                record = StudyRecord.query.filter_by(id=rid, user_id=current_user.id).first()
+                if record:
+                    db.session.delete(record)
+                    deleted_count += 1
+            except:
+                pass
+    db.session.commit()
+    flash(f'已删除 {deleted_count} 条学习记录', 'success')
     return redirect(url_for('study'))
 
 # API: 获取学习记录数据
@@ -334,6 +373,50 @@ def delete_work(record_id):
         db.session.delete(record)
         db.session.commit()
         flash('工作记录已删除', 'success')
+    return redirect(url_for('work'))
+
+# 编辑工作记录
+@app.route('/work/edit/<int:record_id>', methods=['POST'])
+@login_required
+def edit_work(record_id):
+    record = WorkRecord.query.get_or_404(record_id)
+    if record.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权修改'})
+    
+    record.task = request.form.get('task', record.task)
+    record.task_duration = int(request.form.get('task_duration', record.task_duration))
+    record.work_start = request.form.get('work_start') or None
+    record.work_end = request.form.get('work_end') or None
+    if record.work_start and record.work_end:
+        try:
+            start = datetime.strptime(record.work_start, '%H:%M')
+            end = datetime.strptime(record.work_end, '%H:%M')
+            record.overtime = max(0, int((end - start).total_seconds() / 60) - 480)
+        except:
+            pass
+    record.notes = request.form.get('notes', record.notes)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '更新成功'})
+
+# 批量删除工作记录
+@app.route('/work/batch_delete', methods=['POST'])
+@login_required
+def batch_delete_work():
+    ids = request.form.get('ids', '').split(',')
+    deleted_count = 0
+    for id_str in ids:
+        if id_str.strip():
+            try:
+                rid = int(id_str.strip())
+                record = WorkRecord.query.filter_by(id=rid, user_id=current_user.id).first()
+                if record:
+                    db.session.delete(record)
+                    deleted_count += 1
+            except:
+                pass
+    db.session.commit()
+    flash(f'已删除 {deleted_count} 条工作记录', 'success')
     return redirect(url_for('work'))
 
 # 总日历页面 - 查看所有记录
@@ -864,6 +947,10 @@ def add_period():
     start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
     end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
     flow = request.form.get('flow', 'medium')
+    pain_level = int(request.form.get('pain_level', 0))
+    # 多个checkbox用getlist获取，用逗号分隔
+    symptoms_list = request.form.getlist('symptoms')
+    symptoms = ','.join(symptoms_list) if symptoms_list else ''
     notes = request.form.get('notes', '')
     
     period = Period(
@@ -871,6 +958,8 @@ def add_period():
         start_date=start_date,
         end_date=end_date,
         flow=flow,
+        pain_level=pain_level,
+        symptoms=symptoms,
         notes=notes
     )
     db.session.add(period)
@@ -890,6 +979,66 @@ def delete_period(period_id):
         flash('记录已删除', 'success')
     return redirect(url_for('index'))
 
+# 编辑记录
+@app.route('/edit/<int:period_id>', methods=['POST'])
+@login_required
+def edit_period(period_id):
+    period = Period.query.get_or_404(period_id)
+    if period.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权修改'})
+    
+    period.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+    period.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+    period.flow = request.form.get('flow', period.flow)
+    period.pain_level = int(request.form.get('pain_level', period.pain_level or 0))
+    period.symptoms = request.form.get('symptoms', period.symptoms or '')
+    period.notes = request.form.get('notes', period.notes)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '更新成功'})
+
+# 编辑页面
+@app.route('/edit_page/<int:period_id>', methods=['GET', 'POST'])
+@login_required
+def edit_page(period_id):
+    period = Period.query.get_or_404(period_id)
+    if period.user_id != current_user.id:
+        flash('无权修改此记录', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        period.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+        period.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+        period.flow = request.form.get('flow', period.flow)
+        period.pain_level = int(request.form.get('pain_level', 0))
+        period.symptoms = request.form.get('symptoms', '')
+        period.notes = request.form.get('notes', '')
+        db.session.commit()
+        flash('记录更新成功！', 'success')
+        return redirect(url_for('index'))
+    
+    return render_template('edit_period.html', period=period)
+
+# 批量删除记录
+@app.route('/batch_delete', methods=['POST'])
+@login_required
+def batch_delete_period():
+    ids = request.form.get('ids', '').split(',')
+    deleted_count = 0
+    for id_str in ids:
+        if id_str.strip():
+            try:
+                pid = int(id_str.strip())
+                period = Period.query.filter_by(id=pid, user_id=current_user.id).first()
+                if period:
+                    db.session.delete(period)
+                    deleted_count += 1
+            except:
+                pass
+    db.session.commit()
+    flash(f'已删除 {deleted_count} 条记录', 'success')
+    return redirect(url_for('index'))
+
 # API: 获取当前用户数据
 @app.route('/api/data')
 @login_required
@@ -902,9 +1051,174 @@ def api_data():
             'start_date': p.start_date.strftime('%Y-%m-%d'),
             'end_date': p.end_date.strftime('%Y-%m-%d'),
             'flow': p.flow,
+            'pain_level': p.pain_level or 0,
+            'symptoms': p.symptoms or '',
             'notes': p.notes
         })
     return jsonify(data)
+
+# 数据导出
+@app.route('/export')
+@login_required
+def export_data():
+    import json
+    format_type = request.args.get('format', 'xlsx')
+    
+    # 获取所有数据
+    periods = Period.query.filter_by(user_id=current_user.id).all()
+    studies = StudyRecord.query.filter_by(user_id=current_user.id).all()
+    works = WorkRecord.query.filter_by(user_id=current_user.id).all()
+    
+    if format_type == 'xlsx':
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, PatternFill
+        
+        wb = Workbook()
+        
+        # 月经记录Sheet
+        ws1 = wb.active
+        ws1.title = "月经记录"
+        headers1 = ['开始日期', '结束日期', '经量', '疼痛等级', '症状', '备注']
+        ws1.append(headers1)
+        for p in periods:
+            flow_name = {'light': '少量', 'medium': '中等', 'heavy': '大量'}.get(p.flow, p.flow)
+            ws1.append([
+                p.start_date.strftime('%Y-%m-%d'),
+                p.end_date.strftime('%Y-%m-%d'),
+                flow_name,
+                p.pain_level or 0,
+                p.symptoms or '',
+                p.notes or ''
+            ])
+        
+        # 学习记录Sheet
+        ws2 = wb.create_sheet("学习记录")
+        headers2 = ['日期', '科目', '时长(分钟)', '计划', '备注']
+        ws2.append(headers2)
+        for s in studies:
+            ws2.append([
+                s.date.strftime('%Y-%m-%d'),
+                s.subject,
+                s.duration,
+                s.plan or '',
+                s.notes or ''
+            ])
+        
+        # 工作记录Sheet
+        ws3 = wb.create_sheet("工作记录")
+        headers3 = ['日期', '任务', '时长(分钟)', '上班时间', '下班时间', '加班时长(分钟)', '备注']
+        ws3.append(headers3)
+        for w in works:
+            ws3.append([
+                w.date.strftime('%Y-%m-%d'),
+                w.task or '',
+                w.task_duration,
+                w.work_start.strftime('%H:%M') if w.work_start else '',
+                w.work_end.strftime('%H:%M') if w.work_end else '',
+                w.overtime,
+                w.notes or ''
+            ])
+        
+        from io import BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        response = app.response_class(
+            response=output.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename=日历记录_{datetime.now().strftime("%Y%m%d")}.xlsx'}
+        )
+        return response
+    
+    # JSON格式
+    export_data = {
+        'export_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'user': current_user.username,
+        'periods': [{
+            'start_date': p.start_date.strftime('%Y-%m-%d'),
+            'end_date': p.end_date.strftime('%Y-%m-%d'),
+            'flow': p.flow,
+            'pain_level': p.pain_level or 0,
+            'symptoms': p.symptoms or '',
+            'notes': p.notes
+        } for p in periods],
+        'studies': [{
+            'date': s.date.strftime('%Y-%m-%d'),
+            'subject': s.subject,
+            'duration': s.duration,
+            'plan': s.plan or '',
+            'notes': s.notes or ''
+        } for s in studies],
+        'works': [{
+            'date': w.date.strftime('%Y-%m-%d'),
+            'task': w.task or '',
+            'duration': w.task_duration,
+            'work_start': w.work_start.strftime('%H:%M') if w.work_start else '',
+            'work_end': w.work_end.strftime('%H:%M') if w.work_end else '',
+            'overtime': w.overtime,
+            'notes': w.notes or ''
+        } for w in works]
+    }
+    
+    if format_type == 'json':
+        response = app.response_class(
+            response=json.dumps(export_data, ensure_ascii=False, indent=2),
+            mimetype='application/json',
+            headers={'Content-Disposition': f'attachment; filename=calendar_export_{datetime.now().strftime("%Y%m%d")}.json'}
+        )
+        return response
+    
+    return jsonify({'success': False, 'message': '不支持的格式'})
+    
+    return jsonify({'success': False, 'message': '不支持的格式'})
+
+# 排卵期提醒计算
+@app.route('/api/ovulation')
+@login_required
+def get_ovulation_info():
+    """获取排卵期信息"""
+    periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).limit(10).all()
+    
+    if len(periods) < 2:
+        return jsonify({'has_data': False, 'message': '需要至少2条经期记录'})
+    
+    # 计算平均周期
+    cycles = []
+    for i in range(1, len(periods)):
+        cycle = (periods[i-1].start_date - periods[i].start_date).days
+        if 20 <= cycle <= 45:  # 合理周期范围
+            cycles.append(cycle)
+    
+    if not cycles:
+        return jsonify({'has_data': False, 'message': '周期数据不足以计算'})
+    
+    avg_cycle = sum(cycles) / len(cycles)
+    last_period = periods[0]
+    
+    # 排卵日 = 下次经期开始日 - 14天
+    # 假设周期为28天，排卵日在经期开始后第14天
+    next_period_start = last_period.start_date + timedelta(days=int(avg_cycle))
+    ovulation_date = next_period_start - timedelta(days=14)
+    
+    # 排卵期 = 排卵日前5天 + 后4天
+    fertile_start = ovulation_date - timedelta(days=5)
+    fertile_end = ovulation_date + timedelta(days=4)
+    
+    today = datetime.now().date()
+    
+    return jsonify({
+        'has_data': True,
+        'avg_cycle': int(avg_cycle),
+        'last_period': last_period.start_date.strftime('%Y-%m-%d'),
+        'next_period': next_period_start.strftime('%Y-%m-%d'),
+        'ovulation_date': ovulation_date.strftime('%Y-%m-%d'),
+        'fertile_start': fertile_start.strftime('%Y-%m-%d'),
+        'fertile_end': fertile_end.strftime('%Y-%m-%d'),
+        'days_until_ovulation': (ovulation_date - today).days,
+        'is_fertile': fertile_start <= today <= fertile_end,
+        'is_ovulation_day': today == ovulation_date
+    })
 
 # 检查邮箱是否已注册 (AJAX)
 @app.route('/api/check_email')
@@ -1535,6 +1849,199 @@ def ai_accept_study_plan():
         'added_count': added_count,
         'message': f'成功添加 {added_count} 条学习记录'
     })
+
+# ==================== 工作 AI 功能 ====================
+
+@app.route('/api/ai/work/plan', methods=['POST'])
+@login_required
+def ai_work_plan():
+    """生成工作计划"""
+    data = request.get_json()
+    task = data.get('task', '')
+    goal = data.get('goal', '')
+    days = data.get('days', 7)
+    
+    if not task:
+        return jsonify({'success': False, 'message': '请输入工作任务'})
+    
+    prompt = f"""请为用户生成一个{days}天的工作计划。
+
+工作内容: {task}
+工作目标: {goal if goal else '暂无具体目标'}
+
+请生成一个详细的工作计划，必须包含以下内容：
+
+📅 **第1天到第{days}天** 每天都需要有：
+1. 📋 工作任务：具体要完成的工作
+2. ⏱️ 预计时长：建议工作多少小时
+3. 🎯 今日目标：今天要达成什么
+4. 💡 工作方法：用什么方法提高效率
+
+请严格按照以下表格格式输出：
+| 天数 | 工作任务 | 预计时长 | 今日目标 | 工作方法 |
+|------|----------|----------|----------|----------|
+| 第1天 | 任务 | X小时 | 目标 | 方法 |
+| 第2天 | 任务 | X小时 | 目标 | 方法 |
+...（依次列出所有{days}天）
+
+使用emoji让计划更生动，回复使用中文。"""
+    
+    system_prompt = """你是一个专业、高效的工作顾问。你擅长制定工作计划，帮助用户提高工作效率。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'plan': ai_response
+    })
+
+@app.route('/api/ai/work/analyze')
+@login_required
+def ai_work_analyze():
+    """分析工作情况和加班数据"""
+    records = WorkRecord.query.filter_by(user_id=current_user.id).order_by(WorkRecord.date.desc()).limit(20).all()
+    
+    if not records:
+        return jsonify({'success': False, 'message': '暂无工作记录，无法分析'})
+    
+    total_task_duration = sum(r.task_duration for r in records)
+    total_overtime = sum(r.overtime for r in records)
+    overtime_days = sum(1 for r in records if r.overtime > 0)
+    
+    weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+    weekday_stats = {i: {'task': 0, 'overtime': 0} for i in range(7)}
+    for r in records:
+        weekday_stats[r.date.weekday()]['task'] += r.task_duration
+        weekday_stats[r.date.weekday()]['overtime'] += r.overtime
+    
+    busiest_day = max(weekday_stats, key=lambda x: weekday_stats[x]['task'])
+    
+    history_text = "\n".join([
+        f"- {r.date}: {r.task or '打卡'}, 任务{r.task_duration}分钟, 加班{r.overtime}分钟"
+        for r in records[:15]
+    ])
+    
+    prompt = f"""请分析用户的工作数据：
+
+工作记录：
+{history_text}
+
+统计数据：
+- 总任务时长: {total_task_duration} 分钟
+- 总加班时长: {total_overtime} 分钟
+- 加班天数: {overtime_days} 天
+- 最忙工作日: {weekdays[busiest_day]}
+
+请给出：
+1. 工作效率评分 (1-10分)
+2. 工作习惯分析
+3. 加班问题诊断
+4. 改进建议
+
+回复使用中文，结构清晰。"""
+    
+    system_prompt = """你是一个专业的工作效率分析师。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'analysis': ai_response,
+        'stats': {'total_task_duration': total_task_duration, 'total_overtime': total_overtime, 'busiest_day': weekdays[busiest_day]}
+    })
+
+@app.route('/api/ai/work/weeklyReport')
+@login_required
+def ai_weekly_report():
+    """生成工作周报"""
+    today = datetime.now().date()
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    
+    records = WorkRecord.query.filter(
+        WorkRecord.user_id == current_user.id,
+        WorkRecord.date >= week_start,
+        WorkRecord.date <= week_end
+    ).order_by(WorkRecord.date).all()
+    
+    if not records:
+        return jsonify({'success': False, 'message': '本周暂无工作记录'})
+    
+    total_duration = sum(r.task_duration for r in records)
+    total_overtime = sum(r.overtime for r in records)
+    
+    history_text = "\n".join([
+        f"- {r.date}: {r.task or '打卡'}, {r.task_duration}分钟"
+        for r in records
+    ])
+    
+    prompt = f"""请根据用户本周的工作记录生成周报：
+
+本周记录：
+{history_text}
+
+统计：总时长{total_duration}分钟，加班{total_overtime}分钟
+
+请生成工作周报，包括：本周工作内容、数据统计、改进建议。"""
+    
+    ai_response = call_deepseek(prompt, "你是一个专业的工作周报助手。")
+    
+    return jsonify({
+        'success': True,
+        'report': ai_response,
+        'stats': {'total_hours': round(total_duration/60, 1), 'overtime_hours': round(total_overtime/60, 1)}
+    })
+
+@app.route('/api/ai/work/acceptPlan', methods=['POST'])
+@login_required
+def ai_accept_work_plan():
+    """接受工作计划"""
+    data = request.get_json()
+    plan_text = data.get('plan', '')
+    task = data.get('task', '')
+    
+    if not plan_text:
+        return jsonify({'success': False, 'message': '请先生成工作计划'})
+    
+    import re
+    lines = plan_text.split('\n')
+    daily_plans = []
+    max_day = 0
+    
+    # 解析每天的计划内容
+    for i, line in enumerate(lines):
+        day_match = re.search(r'第\s*(\d+)\s*天', line)
+        if day_match:
+            day_num = int(day_match.group(1))
+            max_day = max(max_day, day_num)
+            
+            duration = 60
+            hour_match = re.search(r'(\d+)\s*小时', line)
+            if hour_match:
+                duration = int(hour_match.group(1)) * 60
+            
+            # 提取该行的内容作为备注
+            note_content = line.strip()
+            
+            daily_plans.append({'day': day_num, 'duration': duration, 'note': note_content})
+    
+    if not daily_plans:
+        return jsonify({'success': False, 'message': '无法解析计划'})
+    
+    added_count = 0
+    today_date = datetime.now().date()
+    
+    for plan_info in daily_plans:
+        plan_date = today_date + timedelta(days=plan_info['day'] - 1)
+        # 把AI生成的具体计划内容放入备注
+        note = f"AI工作计划 - {plan_info['note']}"
+        record = WorkRecord(user_id=current_user.id, date=plan_date, task=task or '工作计划', task_duration=plan_info['duration'], notes=note)
+        db.session.add(record)
+        added_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'added_count': added_count})
 
 if __name__ == '__main__':
     with app.app_context():
