@@ -547,6 +547,7 @@
                     <a href="{{ url_for('profile') }}" style="text-decoration: none;">
                         <button class="btn-logout">👤 个人信息</button>
                     </a>
+                    <button onclick="toggleTheme()" class="btn-logout" style="background:#722ed1;">🌙 主题</button>
                     <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
                 </div>
             </div>
@@ -1244,6 +1245,35 @@
                 fetch('/study/batch_delete', { method: 'POST', body: formData }).then(() => location.reload());
             }
         }
+    </script>
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.contains('dark-theme');
+            if (isDark) {
+                body.classList.remove('dark-theme');
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-theme');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        function loadTheme() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') document.body.classList.add('dark-theme');
+        }
+        const darkStyles = `
+            .dark-theme { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%) !important; }
+            .dark-theme .header, .dark-theme .calendar-card, .dark-theme .stats-card, .dark-theme .form-card, .dark-theme .record-card { background: #16213e !important; color: #e0e0e0 !important; }
+            .dark-theme .form-input, .dark-theme select, .dark-theme textarea { background: #1a1a2e !important; color: #e0e0e0 !important; border-color: #4a4a6a !important; }
+            .dark-theme h1, .dark-theme h2, .dark-theme h3 { color: #ff8fab !important; }
+            .dark-theme .nav-tab { background: #16213e !important; color: #e0e0e0 !important; }
+            .dark-theme .nav-tab.active { background: #ff6b9d !important; color: white !important; }
+        `;
+        const styleSheet = document.createElement("style");
+        styleSheet.textContent = darkStyles;
+        document.head.appendChild(styleSheet);
+        document.addEventListener('DOMContentLoaded', loadTheme);
     </script>
 </body>
 </html>

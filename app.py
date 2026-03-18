@@ -70,6 +70,8 @@ class Period(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     flow = db.Column(db.String(20), default='medium')
+    pain_level = db.Column(db.Integer, default=0)  # 疼痛等级 0-10
+    symptoms = db.Column(db.String(200))  # 症状，多个用逗号分隔
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -160,7 +162,7 @@ def load_user(user_id):
 @login_required
 def index():
     periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).all()
-    return render_template('calendar.html', periods=periods, user=current_user, timedelta=timedelta)
+    return render_template('calendar.html', periods=periods, user=current_user, timedelta=timedelta, datetime=datetime)
 
 # 学习记录页面
 @app.route('/study')
@@ -945,6 +947,10 @@ def add_period():
     start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
     end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
     flow = request.form.get('flow', 'medium')
+    pain_level = int(request.form.get('pain_level', 0))
+    # 多个checkbox用getlist获取，用逗号分隔
+    symptoms_list = request.form.getlist('symptoms')
+    symptoms = ','.join(symptoms_list) if symptoms_list else ''
     notes = request.form.get('notes', '')
     
     period = Period(
@@ -952,6 +958,8 @@ def add_period():
         start_date=start_date,
         end_date=end_date,
         flow=flow,
+        pain_level=pain_level,
+        symptoms=symptoms,
         notes=notes
     )
     db.session.add(period)
@@ -982,10 +990,34 @@ def edit_period(period_id):
     period.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
     period.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
     period.flow = request.form.get('flow', period.flow)
+    period.pain_level = int(request.form.get('pain_level', period.pain_level or 0))
+    period.symptoms = request.form.get('symptoms', period.symptoms or '')
     period.notes = request.form.get('notes', period.notes)
     
     db.session.commit()
     return jsonify({'success': True, 'message': '更新成功'})
+
+# 编辑页面
+@app.route('/edit_page/<int:period_id>', methods=['GET', 'POST'])
+@login_required
+def edit_page(period_id):
+    period = Period.query.get_or_404(period_id)
+    if period.user_id != current_user.id:
+        flash('无权修改此记录', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        period.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+        period.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+        period.flow = request.form.get('flow', period.flow)
+        period.pain_level = int(request.form.get('pain_level', 0))
+        period.symptoms = request.form.get('symptoms', '')
+        period.notes = request.form.get('notes', '')
+        db.session.commit()
+        flash('记录更新成功！', 'success')
+        return redirect(url_for('index'))
+    
+    return render_template('edit_period.html', period=period)
 
 # 批量删除记录
 @app.route('/batch_delete', methods=['POST'])
@@ -1019,9 +1051,174 @@ def api_data():
             'start_date': p.start_date.strftime('%Y-%m-%d'),
             'end_date': p.end_date.strftime('%Y-%m-%d'),
             'flow': p.flow,
+            'pain_level': p.pain_level or 0,
+            'symptoms': p.symptoms or '',
             'notes': p.notes
         })
     return jsonify(data)
+
+# 数据导出
+@app.route('/export')
+@login_required
+def export_data():
+    import json
+    format_type = request.args.get('format', 'xlsx')
+    
+    # 获取所有数据
+    periods = Period.query.filter_by(user_id=current_user.id).all()
+    studies = StudyRecord.query.filter_by(user_id=current_user.id).all()
+    works = WorkRecord.query.filter_by(user_id=current_user.id).all()
+    
+    if format_type == 'xlsx':
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, PatternFill
+        
+        wb = Workbook()
+        
+        # 月经记录Sheet
+        ws1 = wb.active
+        ws1.title = "月经记录"
+        headers1 = ['开始日期', '结束日期', '经量', '疼痛等级', '症状', '备注']
+        ws1.append(headers1)
+        for p in periods:
+            flow_name = {'light': '少量', 'medium': '中等', 'heavy': '大量'}.get(p.flow, p.flow)
+            ws1.append([
+                p.start_date.strftime('%Y-%m-%d'),
+                p.end_date.strftime('%Y-%m-%d'),
+                flow_name,
+                p.pain_level or 0,
+                p.symptoms or '',
+                p.notes or ''
+            ])
+        
+        # 学习记录Sheet
+        ws2 = wb.create_sheet("学习记录")
+        headers2 = ['日期', '科目', '时长(分钟)', '计划', '备注']
+        ws2.append(headers2)
+        for s in studies:
+            ws2.append([
+                s.date.strftime('%Y-%m-%d'),
+                s.subject,
+                s.duration,
+                s.plan or '',
+                s.notes or ''
+            ])
+        
+        # 工作记录Sheet
+        ws3 = wb.create_sheet("工作记录")
+        headers3 = ['日期', '任务', '时长(分钟)', '上班时间', '下班时间', '加班时长(分钟)', '备注']
+        ws3.append(headers3)
+        for w in works:
+            ws3.append([
+                w.date.strftime('%Y-%m-%d'),
+                w.task or '',
+                w.task_duration,
+                w.work_start.strftime('%H:%M') if w.work_start else '',
+                w.work_end.strftime('%H:%M') if w.work_end else '',
+                w.overtime,
+                w.notes or ''
+            ])
+        
+        from io import BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        response = app.response_class(
+            response=output.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename=日历记录_{datetime.now().strftime("%Y%m%d")}.xlsx'}
+        )
+        return response
+    
+    # JSON格式
+    export_data = {
+        'export_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'user': current_user.username,
+        'periods': [{
+            'start_date': p.start_date.strftime('%Y-%m-%d'),
+            'end_date': p.end_date.strftime('%Y-%m-%d'),
+            'flow': p.flow,
+            'pain_level': p.pain_level or 0,
+            'symptoms': p.symptoms or '',
+            'notes': p.notes
+        } for p in periods],
+        'studies': [{
+            'date': s.date.strftime('%Y-%m-%d'),
+            'subject': s.subject,
+            'duration': s.duration,
+            'plan': s.plan or '',
+            'notes': s.notes or ''
+        } for s in studies],
+        'works': [{
+            'date': w.date.strftime('%Y-%m-%d'),
+            'task': w.task or '',
+            'duration': w.task_duration,
+            'work_start': w.work_start.strftime('%H:%M') if w.work_start else '',
+            'work_end': w.work_end.strftime('%H:%M') if w.work_end else '',
+            'overtime': w.overtime,
+            'notes': w.notes or ''
+        } for w in works]
+    }
+    
+    if format_type == 'json':
+        response = app.response_class(
+            response=json.dumps(export_data, ensure_ascii=False, indent=2),
+            mimetype='application/json',
+            headers={'Content-Disposition': f'attachment; filename=calendar_export_{datetime.now().strftime("%Y%m%d")}.json'}
+        )
+        return response
+    
+    return jsonify({'success': False, 'message': '不支持的格式'})
+    
+    return jsonify({'success': False, 'message': '不支持的格式'})
+
+# 排卵期提醒计算
+@app.route('/api/ovulation')
+@login_required
+def get_ovulation_info():
+    """获取排卵期信息"""
+    periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).limit(10).all()
+    
+    if len(periods) < 2:
+        return jsonify({'has_data': False, 'message': '需要至少2条经期记录'})
+    
+    # 计算平均周期
+    cycles = []
+    for i in range(1, len(periods)):
+        cycle = (periods[i-1].start_date - periods[i].start_date).days
+        if 20 <= cycle <= 45:  # 合理周期范围
+            cycles.append(cycle)
+    
+    if not cycles:
+        return jsonify({'has_data': False, 'message': '周期数据不足以计算'})
+    
+    avg_cycle = sum(cycles) / len(cycles)
+    last_period = periods[0]
+    
+    # 排卵日 = 下次经期开始日 - 14天
+    # 假设周期为28天，排卵日在经期开始后第14天
+    next_period_start = last_period.start_date + timedelta(days=int(avg_cycle))
+    ovulation_date = next_period_start - timedelta(days=14)
+    
+    # 排卵期 = 排卵日前5天 + 后4天
+    fertile_start = ovulation_date - timedelta(days=5)
+    fertile_end = ovulation_date + timedelta(days=4)
+    
+    today = datetime.now().date()
+    
+    return jsonify({
+        'has_data': True,
+        'avg_cycle': int(avg_cycle),
+        'last_period': last_period.start_date.strftime('%Y-%m-%d'),
+        'next_period': next_period_start.strftime('%Y-%m-%d'),
+        'ovulation_date': ovulation_date.strftime('%Y-%m-%d'),
+        'fertile_start': fertile_start.strftime('%Y-%m-%d'),
+        'fertile_end': fertile_end.strftime('%Y-%m-%d'),
+        'days_until_ovulation': (ovulation_date - today).days,
+        'is_fertile': fertile_start <= today <= fertile_end,
+        'is_ovulation_day': today == ovulation_date
+    })
 
 # 检查邮箱是否已注册 (AJAX)
 @app.route('/api/check_email')
