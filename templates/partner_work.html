@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💼 {{ partner.username }}的工作记录</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 50%, #e8eaf6 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 10px 30px rgba(33, 150, 243, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2196F3;
+            font-size: 1.8em;
+        }
+
+        .header .subtitle {
+            color: #64B5F6;
+            margin-top: 10px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #2196F3;
+            text-decoration: none;
+        }
+
+        .partner-info {
+            background: linear-gradient(135deg, #64B5F6 0%, #90CAF9 100%);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(33, 150, 243, 0.2);
+        }
+
+        .stat-card .icon {
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .stat-card.overtime {
+            background: linear-gradient(135deg, #ff7043 0%, #ff8a65 100%);
+        }
+
+        .stat-card.overtime .stat-value {
+            color: white;
+        }
+
+        .stat-card.overtime .stat-label {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .records-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .record-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(33, 150, 243, 0.2);
+            transition: transform 0.3s;
+        }
+
+        .record-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .record-date {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .task-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            background: #E3F2FD;
+            color: #2196F3;
+        }
+
+        .overtime-badge {
+            background: #FFEBEE;
+            color: #F44336;
+        }
+
+        .record-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .detail-item {
+            background: #f5f9fc;
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .detail-label {
+            color: #999;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .work-time {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .time-slot {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            background: #f5f9fc;
+            border-radius: 8px;
+        }
+
+        .notes {
+            background: #f5f9fc;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 15px;
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(33, 150, 243, 0.2);
+        }
+
+        .empty-state .icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            color: #2196F3;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #999;
+        }
+
+        .records-count {
+            text-align: center;
+            color: #999;
+            margin-bottom: 20px;
+        }
+
+        .calendar-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(33, 150, 243, 0.2);
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 600px) {
+            .record-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('partner_page') }}" class="back-link">← 返回情侣主页</a>
+        
+        <div class="header">
+            <h1>💼 {{ partner.username }}的工作记录</h1>
+            <p class="subtitle">💪 努力工作中</p>
+        </div>
+
+        <div class="partner-info">
+            <span>👤 {{ partner.username }}</span>
+        </div>
+
+        <div class="calendar-container">
+            <h2 style="color: #2196F3; margin-bottom: 15px;">📅 日历视图</h2>
+            <div id="calendar"></div>
+        </div>
+
+        {% set total_duration = records|sum(attribute='task_duration') if records else 0 %}
+        {% set total_overtime = records|sum(attribute='overtime') if records else 0 %}
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="icon">📊</div>
+                <div class="stat-value">{{ records|length }}</div>
+                <div class="stat-label">记录次数</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">⏱️</div>
+                <div class="stat-value">{{ total_duration }}</div>
+                <div class="stat-label">总工作分钟</div>
+            </div>
+            <div class="stat-card overtime">
+                <div class="icon">🌙</div>
+                <div class="stat-value">{{ total_overtime }}</div>
+                <div class="stat-label">总加班分钟</div>
+            </div>
+        </div>
+
+        <div class="records-count">共 {{ records|length }} 条记录</div>
+
+        {% if records %}
+        <div class="records-grid">
+            {% for record in records %}
+            <div class="record-card">
+                <div class="record-header">
+                    <div class="record-date">
+                        {{ record.date.strftime('%Y年%m月%d日') }}
+                    </div>
+                    <span class="task-badge{% if record.overtime > 0 %} overtime-badge{% endif %}">
+                        {{ record.task or '工作任务' }}
+                    </span>
+                </div>
+
+                <div class="record-details">
+                    {% if record.work_start or record.work_end %}
+                    <div class="detail-item">
+                        <div class="detail-label">上班时间</div>
+                        <div class="detail-value work-time">
+                            {% if record.work_start %}{{ record.work_start.strftime('%H:%M') }}{% else %}--{% endif %}
+                            -
+                            {% if record.work_end %}{{ record.work_end.strftime('%H:%M') }}{% else %}--{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="detail-item">
+                        <div class="detail-label">任务时长</div>
+                        <div class="detail-value">{{ record.task_duration }} 分钟</div>
+                    </div>
+                    {% if record.overtime > 0 %}
+                    <div class="detail-item">
+                        <div class="detail-label">加班时长</div>
+                        <div class="detail-value" style="color: #F44336;">{{ record.overtime }} 分钟</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if record.notes %}
+                <div class="notes">
+                    <strong>备注：</strong>{{ record.notes }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">💼</div>
+            <h3>暂无工作记录</h3>
+            <p>{{ partner.username }}还没有记录工作哦</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listMonth'
+                },
+                locale: 'zh-cn',
+                events: '/partner/api/work'
+            });
+            calendar.render();
+        });
+    </script>
+</body>
+</html>

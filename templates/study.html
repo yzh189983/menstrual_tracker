@@ -547,6 +547,9 @@
                     <a href="{{ url_for('profile') }}" style="text-decoration: none;">
                         <button class="btn-logout">👤 个人信息</button>
                     </a>
+                    <a href="{{ url_for('partner_page') }}" style="text-decoration: none;">
+                        <button class="btn-logout" style="background:#ff69b4;">💑 情侣</button>
+                    </a>
                     <button onclick="toggleTheme()" class="btn-logout" style="background:#722ed1;">🌙 主题</button>
                     <a href="{{ url_for('logout') }}"><button class="btn-logout">登出</button></a>
                 </div>
@@ -558,6 +561,7 @@
                 <a href="{{ url_for('work') }}" class="nav-tab">💼 工作记录</a>
                 <a href="{{ url_for('all_calendar') }}" class="nav-tab">📅 总日历</a>
                 <a href="{{ url_for('chat') }}" class="nav-tab {% if request.endpoint == 'chat' or 'chat_room' in request.endpoint %}active{% endif %}">💬 消息</a>
+                <a href="{{ url_for('community') }}" class="nav-tab">🌸 社区</a>
                 <a href="{{ url_for('feedback') }}" class="nav-tab">💭 反馈</a>
             </div>
             <button class="toggle-btn" onclick="toggleHeader()"></button>

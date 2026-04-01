@@ -1,0 +1,225 @@
+/* pages/bluetooth/bluetooth.wxss */
+
+.container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 20rpx;
+}
+
+/* 头部状态 */
+.header {
+  background-color: #fff;
+  padding: 30rpx;
+  border-radius: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  font-size: 28rpx;
+}
+
+.status text {
+  margin-left: 15rpx;
+}
+
+.status.active {
+  color: #52c41a;
+}
+
+.status.inactive {
+  color: #ff4d4f;
+}
+
+.connected-info {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #eee;
+  color: #ff6b9d;
+  font-size: 26rpx;
+}
+
+/* 操作按钮 */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #ff6b9d, #ff9eb5);
+  color: #fff;
+  border-radius: 50rpx;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ff4444, #ff6666);
+  color: #fff;
+  border-radius: 50rpx;
+}
+
+.btn-secondary {
+  background-color: #fff;
+  color: #666;
+  border: 1rpx solid #ddd;
+  border-radius: 50rpx;
+}
+
+/* 设备列表 */
+.device-list {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.list-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #eee;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.refresh {
+  color: #ff6b9d;
+}
+
+.devices {
+  max-height: 400rpx;
+}
+
+.device-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.device-item:last-child {
+  border-bottom: none;
+}
+
+.device-item.connected {
+  background-color: #fff5f8;
+}
+
+.device-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.device-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.device-id {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+.connected-tag {
+  padding: 8rpx 20rpx;
+  background-color: #52c41a;
+  color: #fff;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+}
+
+/* 搜索中 */
+.searching-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx;
+  color: #999;
+}
+
+.spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid #f3f3f3;
+  border-top: 4rpx solid #ff6b9d;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20rpx;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 空状态 */
+.empty-tip {
+  text-align: center;
+  padding: 60rpx;
+  color: #999;
+  font-size: 26rpx;
+}
+
+/* 日志区域 */
+.log-area {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.log-title {
+  font-size: 26rpx;
+  color: #666;
+  padding-bottom: 15rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.logs {
+  max-height: 300rpx;
+}
+
+.log-item {
+  padding: 10rpx 0;
+  font-size: 22rpx;
+}
+
+.log-time {
+  color: #999;
+  margin-right: 10rpx;
+}
+
+.log-msg {
+  color: #333;
+}
+
+/* 使用说明 */
+.guide {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 20rpx;
+}
+
+.guide-title {
+  font-size: 26rpx;
+  color: #666;
+  padding-bottom: 15rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.guide-content {
+  display: flex;
+  flex-direction: column;
+  padding-top: 15rpx;
+}
+
+.guide-content text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.8;
+}

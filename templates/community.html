@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌸 社区 - 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #f0f5ff 0%, #f5f0ff 50%, #ffeef0 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        /* 导航 */
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .nav-link {
+            padding: 10px 18px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: white;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+        .nav-link:hover { transform: translateY(-2px); }
+        
+        /* 卡片 */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+        
+        /* 话题筛选 */
+        .topic-tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .topic-tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #f0f0f0;
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+        }
+        .topic-tab.active {
+            color: white;
+        }
+        
+        /* 发帖框 */
+        .post-form textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+        }
+        .post-form textarea:focus {
+            outline: none;
+            border-color: #ff6b9d;
+        }
+        .post-form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .post-form-left {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .post-form select {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+        }
+        .post-form input[type="file"] {
+            display: none;
+        }
+        .upload-btn {
+            padding: 8px 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-block;
+            color: #666;
+        }
+        .upload-btn:hover {
+            background: #e5e5e5;
+        }
+        .submit-btn {
+            padding: 10px 25px;
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        .submit-btn:hover { background: linear-gradient(135deg, #ff5080, #ff7090); }
+        
+        /* 帖子卡片 */
+        .post-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .post-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            margin-right: 12px;
+        }
+        .post-user-info { flex: 1; }
+        .post-username {
+            font-weight: 600;
+            color: #333;
+            font-size: 15px;
+        }
+        .post-topic {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .post-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 3px;
+        }
+        .post-content {
+            color: #333;
+            line-height: 1.7;
+            font-size: 15px;
+            white-space: pre-wrap;
+        }
+        .post-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .post-images img {
+            width: 100%;
+            border-radius: 12px;
+            object-fit: cover;
+        }
+        .post-actions {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #888;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 14px;
+        }
+        .action-btn:hover { color: #ff6b9d; }
+        .action-btn.liked { color: #ff6b9d; }
+        
+        /* 热门帖子 */
+        .hot-posts {
+            background: linear-gradient(135deg, #fff5f8, #f5f0ff);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .hot-posts h3 {
+            color: #ff6b9d;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .hot-post-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,182,193,0.2);
+        }
+        .hot-post-item:last-child { border-bottom: none; }
+        .hot-rank {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #ff6b9d;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .hot-post-info { flex: 1; }
+        .hot-post-title {
+            font-size: 14px;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hot-post-likes {
+            font-size: 12px;
+            color: #999;
+            margin-top: 3px;
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        /* Flash 消息 */
+        .flash-messages { margin-bottom: 20px; }
+        .flash {
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .flash-success { background: #d4edda; color: #155724; }
+        .flash-error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航 -->
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}" class="nav-link" style="background: #ff6b9d;">🌸 月经</a>
+            <a href="{{ url_for('study') }}" class="nav-link" style="background: #1890ff;">📚 学习</a>
+            <a href="{{ url_for('work') }}" class="nav-link" style="background: #fa8c16;">💼 工作</a>
+            <a href="{{ url_for('all_calendar') }}" class="nav-link" style="background: #9b59b6;">📅 日历</a>
+            <a href="{{ url_for('chat') }}" class="nav-link" style="background: #52c41a;">💬 消息</a>
+            <a href="{{ url_for('community') }}" class="nav-link" style="background: #722ed1;">🌸 社区</a>
+            <a href="{{ url_for('profile') }}" class="nav-link" style="background: #666;">👤 我的</a>
+            <a href="{{ url_for('feedback') }}" class="nav-link" style="background: #13c2c2;">💭 反馈</a>
+            <a href="{{ url_for('logout') }}" class="nav-link" style="background: #ff4d4f;">登出</a>
+        </div>
+        
+        <!-- Flash 消息 -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        <!-- 发帖 -->
+        <div class="card post-form">
+            <form method="POST" action="{{ url_for('community_add_post') }}" enctype="multipart/form-data">
+                <textarea name="content" placeholder="分享你的想法..." required></textarea>
+                <div class="post-form-actions">
+                    <div class="post-form-left">
+                        <select name="topic">
+                            {% for key, topic in topics.items() %}
+                                <option value="{{ key }}">{{ topic.icon }} {{ topic.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <label class="upload-btn">
+                            📷 图片
+                            <input type="file" name="image" accept="image/*">
+                        </label>
+                        <label>
+                            <input type="checkbox" name="is_anonymous"> 匿名
+                        </label>
+                        <a href="{{ url_for('community_user_profile', user_id=user.id) }}" class="upload-btn" style="text-decoration: none; color: #666;">📝 我的帖子</a>
+                    </div>
+                    <button type="submit" class="submit-btn">发布</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 话题筛选 -->
+        <div class="topic-tabs">
+            <a href="{{ url_for('community', topic='all') }}" class="topic-tab {% if current_topic == 'all' %}active{% endif %}" style="{% if current_topic == 'all' %}background: #722ed1;{% endif %}">全部</a>
+            {% for key, topic in topics.items() %}
+                <a href="{{ url_for('community', topic=key) }}" class="topic-tab {% if current_topic == key %}active{% endif %}" style="{% if current_topic == key %}background: {{ topic.color }};{% endif %}">{{ topic.icon }} {{ topic.name }}</a>
+            {% endfor %}
+        </div>
+        
+        <!-- 热门帖子 -->
+        {% if hot_posts %}
+        <div class="hot-posts">
+            <h3>🔥 热门帖子</h3>
+            {% for post in hot_posts[:5] %}
+                <a href="{{ url_for('community_post_detail', post_id=post.id) }}" style="text-decoration: none;">
+                    <div class="hot-post-item">
+                        <div class="hot-rank">{{ loop.index }}</div>
+                        <div class="hot-post-info">
+                            <div class="hot-post-title">{{ post.content[:30] }}...</div>
+                            <div class="hot-post-likes">❤️ {{ post.likes_count }} · 💬 {{ post.comments_count }}</div>
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- 帖子列表 -->
+        {% if posts %}
+            {% for post in posts %}
+                <div class="post-card">
+                    <div class="post-header">
+                        <div class="post-avatar">
+                            {% if post.is_anonymous %}
+                                👤
+                            {% else %}
+                                {{ (post.user.username or '用户')[:1] }}
+                            {% endif %}
+                        </div>
+                        <div class="post-user-info">
+                            <div class="post-username">
+                                {% if post.is_anonymous %}
+                                    匿名用户
+                                {% else %}
+                                    <a href="{{ url_for('community_user_profile', user_id=post.user_id) }}" style="text-decoration: none; color: #333;">
+                                        {{ post.user.username or '用户' }}
+                                    </a>
+                                {% endif %}
+                                <span class="post-topic" style="background: {{ topics[post.topic].color }}20; color: {{ topics[post.topic].color }}; margin-left: 8px;">
+                                    {{ topics[post.topic].icon }} {{ topics[post.topic].name }}
+                                </span>
+                            </div>
+                            <div class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                        </div>
+                    </div>
+                    <div class="post-content">{{ post.content }}</div>
+                    {% if post.images %}
+                        <div class="post-images">
+                            {% for img in post.images.split(',') %}
+                                {% if img %}
+                                    <img src="{{ url_for('static', filename='uploads/' + img) }}" alt="图片">
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="post-actions">
+                        <button class="action-btn {% if post.likes_count > 0 %}liked{% endif %}" onclick="likePost({{ post.id }})">
+                            ❤️ <span id="like-count-{{ post.id }}">{{ post.likes_count }}</span>
+                        </button>
+                        <a href="{{ url_for('community_post_detail', post_id=post.id) }}" class="action-btn">
+                            💬 {{ post.comments_count }}
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <p>还没有帖子，快来发布第一条吧！</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        function likePost(postId) {
+            fetch(`/community/post/${postId}/like`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`like-count-${postId}`).textContent = data.likes_count;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

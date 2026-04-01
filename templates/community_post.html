@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>帖子详情 - 社区</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #f0f5ff 0%, #f5f0ff 50%, #ffeef0 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+            text-decoration: none;
+            margin-bottom: 20px;
+            padding: 8px 16px;
+            background: white;
+            border-radius: 20px;
+        }
+        
+        .post-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .post-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 22px;
+            margin-right: 15px;
+        }
+        
+        .post-user-info { flex: 1; }
+        
+        .post-username {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .post-topic {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-left: 8px;
+        }
+        
+        .post-time {
+            font-size: 13px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .post-content {
+            color: #333;
+            line-height: 1.8;
+            font-size: 16px;
+            white-space: pre-wrap;
+        }
+        
+        .post-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .post-images img {
+            width: 100%;
+            border-radius: 12px;
+            object-fit: cover;
+        }
+        
+        .post-actions {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #888;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+        
+        .action-btn:hover { background: #f5f5f5; }
+        .action-btn.liked { color: #ff6b9d; }
+        
+        .delete-btn {
+            margin-left: auto;
+            color: #ff4d4f;
+        }
+        
+        /* 评论区域 */
+        .comments-section {
+            margin-top: 30px;
+        }
+        
+        .comments-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .comment-form {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        
+        .comment-form input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+        }
+        
+        .comment-form input:focus {
+            outline: none;
+            border-color: #ff6b9d;
+        }
+        
+        .comment-form button {
+            padding: 12px 25px;
+            background: #ff6b9d;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        
+        .comment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .comment-card {
+            display: flex;
+            gap: 12px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 15px;
+        }
+        
+        .comment-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #722ed1, #b37feb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .comment-content { flex: 1; }
+        
+        .comment-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        
+        .comment-username {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .comment-time {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .comment-text {
+            color: #555;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('community') }}" class="back-link">← 返回社区</a>
+        
+        <div class="card">
+            <div class="post-header">
+                <div class="post-avatar">
+                    {% if post.is_anonymous %}
+                        👤
+                    {% else %}
+                        {{ (post.user.username or '用户')[:1] }}
+                    {% endif %}
+                </div>
+                <div class="post-user-info">
+                    <div class="post-username">
+                        {% if post.is_anonymous %}
+                            匿名用户
+                        {% else %}
+                            <a href="{{ url_for('community_user_profile', user_id=post.user_id) }}" style="text-decoration: none; color: #333;">
+                                {{ post.user.username or '用户' }}
+                            </a>
+                        {% endif %}
+                        <span class="post-topic" style="background: {{ topics[post.topic].color }}20; color: {{ topics[post.topic].color }};">
+                            {{ topics[post.topic].icon }} {{ topics[post.topic].name }}
+                        </span>
+                    </div>
+                    <div class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+            </div>
+            
+            <div class="post-content">{{ post.content }}</div>
+            
+            {% if post.images %}
+                <div class="post-images">
+                    {% for img in post.images.split(',') %}
+                        {% if img %}
+                            <img src="{{ url_for('static', filename='uploads/' + img) }}" alt="图片">
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <div class="post-actions">
+                <button class="action-btn {% if post.likes_count > 0 %}liked{% endif %}" onclick="likePost({{ post.id }})">
+                    ❤️ <span id="like-count-{{ post.id }}">{{ post.likes_count }}</span>
+                </button>
+                <button class="action-btn">
+                    💬 {{ post.comments_count }}
+                </button>
+                {% if post.user_id == user.id %}
+                    <button class="action-btn delete-btn" onclick="deletePost({{ post.id }})">
+                        🗑️ 删除
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 评论 -->
+        <div class="comments-section">
+            <h3>评论 ({{ comments|length }})</h3>
+            
+            <form class="comment-form" onsubmit="return submitComment(event)">
+                <input type="text" name="content" placeholder="说点什么..." required>
+                <button type="submit">发布</button>
+            </form>
+            
+            <div class="comment-list">
+                {% for comment in comments %}
+                    <div class="comment-card">
+                        <div class="comment-avatar">
+                            {{ (comment.user.username or '用户')[:1] }}
+                        </div>
+                        <div class="comment-content">
+                            <div class="comment-header">
+                                <span class="comment-username">{{ comment.user.username }}</span>
+                                <span class="comment-time">{{ comment.created_at.strftime('%m-%d %H:%M') }}</span>
+                            </div>
+                            <div class="comment-text">{{ comment.content }}</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <p style="color: #999; text-align: center;">还没有评论，快来抢沙发吧！</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function likePost(postId) {
+            fetch(`/community/post/${postId}/like`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`like-count-${postId}`).textContent = data.likes_count;
+                }
+            });
+        }
+        
+        function deletePost(postId) {
+            if (confirm('确定删除这条帖子吗？')) {
+                fetch(`/community/post/${postId}/delete`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '{{ url_for("community") }}';
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            }
+        }
+        
+        function submitComment(event) {
+            event.preventDefault();
+            const form = event.target;
+            const content = form.content.value;
+            
+            fetch(`/community/post/{{ post.id }}/comment`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `content=${encodeURIComponent(content)}`
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+            
+            return false;
+        }
+    </script>
+</body>
+</html>

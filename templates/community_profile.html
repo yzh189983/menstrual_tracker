@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ profile_user.username }} - 个人主页</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #f0f5ff 0%, #f5f0ff 50%, #ffeef0 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+            text-decoration: none;
+            margin-bottom: 20px;
+            padding: 8px 16px;
+            background: white;
+            border-radius: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        
+        .profile-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+        
+        .username {
+            font-size: 22px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .bio {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #ff6b9d;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #999;
+        }
+        
+        .follow-btn {
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-size: 15px;
+            cursor: pointer;
+            border: none;
+            font-weight: 500;
+        }
+        
+        .follow-btn.following {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .follow-btn.not-following {
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            color: white;
+        }
+        
+        .user-posts {
+            margin-top: 30px;
+        }
+        
+        .user-posts h3 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .post-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        
+        .post-time {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+        
+        .post-content {
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .post-stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f0f0f0;
+            color: #888;
+            font-size: 13px;
+        }
+        
+        .post-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .post-action-btn {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            background: #f5f5f5;
+            color: #666;
+        }
+        
+        .post-action-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .post-action-btn.delete {
+            color: #ff4d4f;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        /* 编辑弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .modal-textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .modal-textarea:focus {
+            outline: none;
+            border-color: #ff6b9d;
+        }
+        
+        .modal-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            margin-top: 15px;
+        }
+        
+        .modal-checkbox {
+            margin-top: 15px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 15px;
+            font-size: 15px;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .modal-btn.primary {
+            background: #ff6b9d;
+            color: white;
+        }
+        
+        .modal-btn.secondary {
+            background: #f5f5f5;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('community') }}" class="back-link">← 返回社区</a>
+        
+        <div class="card">
+            <div class="profile-header">
+                <div class="avatar">
+                    {{ (profile_user.username or '用户')[:1] }}
+                </div>
+                <div class="username">
+                    {{ profile_user.username }}
+                </div>
+                <div class="bio">还没有简介</div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ posts|length }}</div>
+                        <div class="stat-label">帖子</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ followers_count }}</div>
+                        <div class="stat-label">粉丝</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ following_count }}</div>
+                        <div class="stat-label">关注</div>
+                    </div>
+                </div>
+                
+                {% if profile_user.id != user.id %}
+                    <button class="follow-btn {% if is_following %}following{% else %}not-following{% endif %}" 
+                            onclick="toggleFollow({{ profile_user.id }})">
+                        {% if is_following %}✓ 已关注{% else %}关注{% endif %}
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 用户帖子 -->
+        <div class="user-posts">
+            <h3>TA的帖子</h3>
+            {% if posts %}
+                {% for post in posts %}
+                    <div class="post-card" style="{% if profile_user.id == user.id %}padding-right: 100px;{% endif %}">
+                        {% if profile_user.id == user.id %}
+                        <div class="post-actions">
+                            <button class="post-action-btn" onclick="openEditModal({{ post.id }}, '{{ post.content|replace("'", "\\'") }}', '{{ post.topic }}', {{ 'true' if post.is_anonymous else 'false' }})">✏️ 编辑</button>
+                            <button class="post-action-btn delete" onclick="deletePost({{ post.id }})">🗑️ 删除</button>
+                        </div>
+                        {% endif %}
+                        <a href="{{ url_for('community_post_detail', post_id=post.id) }}" style="text-decoration: none; color: inherit; display: block;">
+                            <div class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                            <div class="post-content">{{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}</div>
+                            <div class="post-stats">
+                                <span>❤️ {{ post.likes_count }}</span>
+                                <span>💬 {{ post.comments_count }}</span>
+                            </div>
+                        </a>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>还没有发布任何帖子</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- 编辑弹窗 -->
+        <div class="modal" id="editModal">
+            <div class="modal-content">
+                <div class="modal-title">编辑帖子</div>
+                <form id="editForm">
+                    <textarea class="modal-textarea" id="editContent" required></textarea>
+                    <select class="modal-select" id="editTopic">
+                        {% for key, topic in topics.items() %}
+                            <option value="{{ key }}">{{ topic.icon }} {{ topic.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="modal-checkbox">
+                        <label>
+                            <input type="checkbox" id="editAnonymous"> 匿名发布
+                        </label>
+                    </div>
+                    <div class="modal-buttons">
+                        <button type="button" class="modal-btn secondary" onclick="closeEditModal()">取消</button>
+                        <button type="submit" class="modal-btn primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPostId = null;
+        
+        function openEditModal(postId, content, topic, isAnonymous) {
+            currentPostId = postId;
+            document.getElementById('editContent').value = content;
+            document.getElementById('editTopic').value = topic;
+            document.getElementById('editAnonymous').checked = isAnonymous;
+            document.getElementById('editModal').classList.add('active');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            currentPostId = null;
+        }
+        
+        document.getElementById('editForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!currentPostId) return;
+            
+            const content = document.getElementById('editContent').value;
+            const topic = document.getElementById('editTopic').value;
+            const is_anonymous = document.getElementById('editAnonymous').checked;
+            
+            const formData = new FormData();
+            formData.append('content', content);
+            formData.append('topic', topic);
+            formData.append('is_anonymous', is_anonymous ? 'on' : '');
+            
+            fetch(`/community/post/${currentPostId}/edit`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+        
+        function deletePost(postId) {
+            if (confirm('确定删除这条帖子吗？')) {
+                fetch(`/community/post/${postId}/delete`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            }
+        }
+        
+        function toggleFollow(userId) {
+            fetch(`/community/follow/${userId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

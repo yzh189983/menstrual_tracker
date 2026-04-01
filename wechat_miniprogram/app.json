@@ -1,0 +1,54 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/bluetooth/bluetooth",
+    "pages/logs/logs"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#ff6b9d",
+    "navigationBarTitleText": "日历小助手",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f8f8f8"
+  },
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#ff6b9d",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "语音助手",
+        "iconPath": "images/mic.png",
+        "selectedIconPath": "images/mic-active.png"
+      },
+      {
+        "pagePath": "pages/bluetooth/bluetooth",
+        "text": "蓝牙设备",
+        "iconPath": "images/bluetooth.png",
+        "selectedIconPath": "images/bluetooth-active.png"
+      },
+      {
+        "pagePath": "pages/logs/logs",
+        "text": "记录",
+        "iconPath": "images/log.png",
+        "selectedIconPath": "images/log-active.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于日历位置提醒"
+    },
+    "scope.record": {
+      "desc": "用于语音记录日程"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseAddress"
+  ],
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}
