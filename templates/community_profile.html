@@ -313,21 +313,40 @@
             <h3>TA的帖子</h3>
             {% if posts %}
                 {% for post in posts %}
-                    <div class="post-card" style="{% if profile_user.id == user.id %}padding-right: 100px;{% endif %}">
-                        {% if profile_user.id == user.id %}
-                        <div class="post-actions">
-                            <button class="post-action-btn" onclick="openEditModal({{ post.id }}, '{{ post.content|replace("'", "\\'") }}', '{{ post.topic }}', {{ 'true' if post.is_anonymous else 'false' }})">✏️ 编辑</button>
-                            <button class="post-action-btn delete" onclick="deletePost({{ post.id }})">🗑️ 删除</button>
-                        </div>
-                        {% endif %}
-                        <a href="{{ url_for('community_post_detail', post_id=post.id) }}" style="text-decoration: none; color: inherit; display: block;">
-                            <div class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
-                            <div class="post-content">{{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}</div>
+                    <div class="post-card" id="post-{{ post.id }}">
+                        <div class="post-summary" onclick="togglePost({{ post.id }})" style="cursor: pointer;">
+                            <div class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }} <span style="color:#722ed1;">{{ post.topic }}</span></div>
+                            <div class="post-content">{{ post.content[:80] }}{% if post.content|length > 80 %}...{% endif %}</div>
+                            {% if post.images %}
+                                <div style="color:#999;font-size:12px;margin-top:5px;">📷 {{ post.images.split(',')|length }}张图片</div>
+                            {% endif %}
                             <div class="post-stats">
                                 <span>❤️ {{ post.likes_count }}</span>
                                 <span>💬 {{ post.comments_count }}</span>
+                                <span style="margin-left:auto;">点击展开 ▼</span>
                             </div>
-                        </a>
+                        </div>
+                        
+                        <div class="post-detail" id="post-detail-{{ post.id }}" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #f0f0f0;">
+                            <div class="post-content" style="white-space: pre-wrap;">{{ post.content }}</div>
+                            {% if post.images %}
+                                <div class="post-images" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px;">
+                                    {% for img in post.images.split(',') %}
+                                        {% if img %}
+                                            <img src="{{ url_for('static', filename='uploads/' + img) }}" style="width:100%; border-radius: 10px;">
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            {% if profile_user.id == user.id %}
+                            <div class="post-actions" style="margin-top: 15px; display: flex; gap: 10px;">
+                                <button class="post-action-btn" onclick="openEditModal({{ post.id }}, '{{ post.content|replace("'", "\\'")|replace('\n', '\\n') }}', '{{ post.topic }}', {{ 'true' if post.is_anonymous else 'false' }}, '{{ post.images or '' }}')">✏️ 编辑</button>
+                                <button class="post-action-btn delete" onclick="deletePost({{ post.id }})">🗑️ 删除</button>
+                            </div>
+                            {% endif %}
+                            <div style="margin-top: 10px; color: #999; font-size: 12px; cursor: pointer;" onclick="togglePost({{ post.id }})">▲ 收起</div>
+                        </div>
                     </div>
                 {% endfor %}
             {% else %}
@@ -336,6 +355,20 @@
                 </div>
             {% endif %}
         </div>
+        
+        <script>
+        function togglePost(postId) {
+            var detail = document.getElementById('post-detail-' + postId);
+            var card = document.getElementById('post-' + postId);
+            if (detail.style.display === 'none') {
+                detail.style.display = 'block';
+                card.style.background = '#f9f9f9';
+            } else {
+                detail.style.display = 'none';
+                card.style.background = 'white';
+            }
+        }
+        </script>
         
         <!-- 编辑弹窗 -->
         <div class="modal" id="editModal">
@@ -353,6 +386,10 @@
                             <input type="checkbox" id="editAnonymous"> 匿名发布
                         </label>
                     </div>
+                    <div style="margin-top: 15px;">
+                        <label style="color:#666;font-size:14px;">📷 当前图片 (点击删除)</label>
+                        <div id="editImages" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px;"></div>
+                    </div>
                     <div class="modal-buttons">
                         <button type="button" class="modal-btn secondary" onclick="closeEditModal()">取消</button>
                         <button type="submit" class="modal-btn primary">保存</button>
@@ -364,13 +401,57 @@
     
     <script>
         let currentPostId = null;
+        let currentImages = [];
         
-        function openEditModal(postId, content, topic, isAnonymous) {
+        function openEditModal(postId, content, topic, isAnonymous, images) {
             currentPostId = postId;
+            currentImages = images ? images.split(',') : [];
             document.getElementById('editContent').value = content;
             document.getElementById('editTopic').value = topic;
             document.getElementById('editAnonymous').checked = isAnonymous;
+            
+            // 显示当前图片
+            var imgContainer = document.getElementById('editImages');
+            imgContainer.innerHTML = '';
+            currentImages.forEach(function(img, idx) {
+                if (img) {
+                    var div = document.createElement('div');
+                    div.style.position = 'relative';
+                    
+                    var delBtn = document.createElement('button');
+                    delBtn.innerHTML = '✕';
+                    delBtn.style.position = 'absolute';
+                    delBtn.style.top = '5px';
+                    delBtn.style.right = '5px';
+                    delBtn.style.background = '#ff4d4f';
+                    delBtn.style.color = 'white';
+                    delBtn.style.border = 'none';
+                    delBtn.style.borderRadius = '50%';
+                    delBtn.style.width = '20px';
+                    delBtn.style.height = '20px';
+                    delBtn.style.cursor = 'pointer';
+                    delBtn.onclick = function() { removeEditImage(idx); };
+                    
+                    var imgEl = document.createElement('img');
+                    imgEl.src = '/static/uploads/' + img;
+                    imgEl.style.width = '100%';
+                    imgEl.style.borderRadius = '10px';
+                    
+                    div.appendChild(imgEl);
+                    div.appendChild(delBtn);
+                    imgContainer.appendChild(div);
+                }
+            });
+            
             document.getElementById('editModal').classList.add('active');
+        }
+        
+        function removeEditImage(idx) {
+            currentImages[idx] = null;
+            openEditModal(currentPostId, document.getElementById('editContent').value, 
+                      document.getElementById('editTopic').value,
+                      document.getElementById('editAnonymous').checked,
+                      currentImages.filter(function(x) { return x; }).join(','));
         }
         
         function closeEditModal() {

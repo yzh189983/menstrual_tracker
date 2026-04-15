@@ -291,32 +291,161 @@
         
         <!-- 发帖 -->
         <div class="card post-form">
-            <form method="POST" action="{{ url_for('community_add_post') }}" enctype="multipart/form-data">
-                <textarea name="content" placeholder="分享你的想法..." required></textarea>
+            <form id="postForm">
+                <textarea name="content" id="postContent" placeholder="分享你的想法..." required></textarea>
+                
+                <!-- 图片预览区域 -->
+                <div id="imagePreview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
+                
                 <div class="post-form-actions">
                     <div class="post-form-left">
-                        <select name="topic">
+                        <select name="topic" id="postTopic">
                             {% for key, topic in topics.items() %}
                                 <option value="{{ key }}">{{ topic.icon }} {{ topic.name }}</option>
                             {% endfor %}
                         </select>
                         <label class="upload-btn">
                             📷 图片
-                            <input type="file" name="image" accept="image/*">
+                            <input type="file" accept="image/*" id="imageInput" onchange="handleImageUpload(this)">
                         </label>
                         <label>
-                            <input type="checkbox" name="is_anonymous"> 匿名
+                            <input type="checkbox" id="postAnonymous"> 匿名
                         </label>
                         <a href="{{ url_for('community_user_profile', user_id=user.id) }}" class="upload-btn" style="text-decoration: none; color: #666;">📝 我的帖子</a>
                     </div>
-                    <button type="submit" class="submit-btn">发布</button>
+                    <button type="button" class="submit-btn" onclick="submitPost()">发布</button>
                 </div>
             </form>
         </div>
         
-        <!-- 话题筛选 -->
+        <script>
+        var uploadedImages = [];
+        var maxImages = 4;
+        
+        function handleImageUpload(input) {
+            if (uploadedImages.length >= maxImages) {
+                alert('最多只能上传' + maxImages + '张图片！');
+                input.value = '';
+                return;
+            }
+            
+            var file = input.files[0];
+            if (!file) return;
+            
+            // 检查文件大小 (最大 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('图片大小不能超过2MB！');
+                input.value = '';
+                return;
+            }
+            
+            // 直接上传到服务器返回文件名
+            var formData = new FormData();
+            formData.append('image', file);
+            
+            fetch('/community/upload_image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    uploadedImages.push(data.filename);
+                    showImagePreview(data.url, uploadedImages.length - 1, data.filename);
+                    alert('图片上传成功！');
+                } else {
+                    alert(data.message || '上传失败');
+                }
+                input.value = '';
+            })
+            .catch(function(e) {
+                alert('上传失败: ' + e);
+                input.value = '';
+            });
+        }
+        
+        function showImagePreview(imgUrl, index, filename) {
+            var preview = document.getElementById('imagePreview');
+            var div = document.createElement('div');
+            div.style.position = 'relative';
+            div.style.width = '80px';
+            div.style.height = '80px';
+            div.dataset.filename = filename;
+            
+            var img = document.createElement('img');
+            img.src = imgUrl;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '10px';
+            
+            var deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '✕';
+            deleteBtn.style.position = 'absolute';
+            deleteBtn.style.top = '-5px';
+            deleteBtn.style.right = '-5px';
+            deleteBtn.style.width = '20px';
+            deleteBtn.style.height = '20px';
+            deleteBtn.style.borderRadius = '50%';
+            deleteBtn.style.background = '#ff4d4f';
+            deleteBtn.style.color = 'white';
+            deleteBtn.style.border = 'none';
+            deleteBtn.style.cursor = 'pointer';
+            deleteBtn.onclick = function() { removeImage(index, filename); };
+            
+            div.appendChild(img);
+            div.appendChild(deleteBtn);
+            preview.appendChild(div);
+        }
+        
+        function removeImage(index, filename) {
+            uploadedImages[index] = null;
+            var preview = document.getElementById('imagePreview');
+            var divs = preview.querySelectorAll('div');
+            for (var i = 0; i < divs.length; i++) {
+                if (divs[i].dataset.filename == filename) {
+                    divs[i].remove();
+                    break;
+                }
+            }
+            alert('图片已删除');
+        }
+        
+        function submitPost() {
+            var content = document.getElementById('postContent').value.trim();
+            if (!content) {
+                alert('内容不能为空！');
+                return;
+            }
+            
+            var topic = document.getElementById('postTopic').value;
+            var is_anonymous = document.getElementById('postAnonymous').checked;
+            
+            var formData = new FormData();
+            formData.append('content', content);
+            formData.append('topic', topic);
+            formData.append('is_anonymous', is_anonymous ? 'on' : '');
+            formData.append('images', uploadedImages.filter(function(x) { return x; }).join(','));
+            
+            fetch('/community/post/add', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(res) { return res.text(); })
+            .then(function(data) {
+                alert('发布成功！');
+                location.reload();
+            })
+            .catch(function(e) {
+                alert('发布失败: ' + e);
+            });
+        }
+        </script>
+        
+        <!-- 筛选标签 -->
         <div class="topic-tabs">
             <a href="{{ url_for('community', topic='all') }}" class="topic-tab {% if current_topic == 'all' %}active{% endif %}" style="{% if current_topic == 'all' %}background: #722ed1;{% endif %}">全部</a>
+            <a href="{{ url_for('community', topic='following') }}" class="topic-tab {% if current_topic == 'following' %}active{% endif %}" style="{% if current_topic == 'following' %}background: #52c41a;{% endif %}">👥 关注</a>
             {% for key, topic in topics.items() %}
                 <a href="{{ url_for('community', topic=key) }}" class="topic-tab {% if current_topic == key %}active{% endif %}" style="{% if current_topic == key %}background: {{ topic.color }};{% endif %}">{{ topic.icon }} {{ topic.name }}</a>
             {% endfor %}
@@ -407,6 +536,151 @@
                     document.getElementById(`like-count-${postId}`).textContent = data.likes_count;
                 }
             });
+        }
+    </script>
+    
+    <!-- 悬浮按钮 -->
+    <div id="fabContainer" style="position: fixed; bottom: 30px; right: 30px; z-index: 999;">
+        <!-- 我的帖子按钮 -->
+        <a href="{{ url_for('community_user_profile', user_id=user.id) }}" id="myPostsBtn" style="display: block; background: #722ed1; color: white; padding: 12px 20px; border-radius: 25px; text-decoration: none; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(114, 46, 209, 0.4); text-align: center; font-size: 14px;">
+            📝 我的帖子
+        </a>
+        
+        <!-- 加号按钮 -->
+        <button id="fabBtn" onclick="toggleFabMenu()" style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #ff6b9d, #ff8fab); color: white; border: none; font-size: 30px; cursor: pointer; box-shadow: 0 4px 20px rgba(255, 107, 157, 0.5);">
+            +
+        </button>
+        
+        <!-- 弹窗 -->
+        <div id="fabModal" style="display: none; position: absolute; bottom: 70px; right: 0; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); width: 300px;">
+            <div style="font-weight: 600; margin-bottom: 15px; color: #333;">发布新帖子</div>
+            <textarea id="modalContent" placeholder="分享你的想法..." style="width: 100%; height: 100px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 12px; resize: none; font-family: inherit;"></textarea>
+            <div id="modalImagePreview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
+            <div style="margin-top: 15px;">
+                <select id="modalTopic" style="padding: 8px; border-radius: 10px; border: 1px solid #ddd;">
+                    {% for key, topic in topics.items() %}
+                        <option value="{{ key }}">{{ topic.icon }} {{ topic.name }}</option>
+                    {% endfor %}
+                </select>
+                <label style="margin-left: 10px;">
+                    <input type="checkbox" id="modalAnonymous"> 匿名
+                </label>
+            </div>
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <label style="flex:1; padding: 10px; background: #f5f5f5; border-radius: 10px; text-align: center; cursor: pointer;">
+                    📷 添加图片
+                    <input type="file" accept="image/*" style="display: none;" onchange="handleModalImage(this)">
+                </label>
+                <button onclick="submitModalPost()" style="flex:1; padding: 10px; background: #ff6b9d; color: white; border: none; border-radius: 10px; cursor: pointer;">发布</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        var modalUploadedImages = [];
+        
+        function toggleFabMenu() {
+            var modal = document.getElementById('fabModal');
+            var btn = document.getElementById('fabBtn');
+            var myPosts = document.getElementById('myPostsBtn');
+            
+            if (modal.style.display === 'none') {
+                modal.style.display = 'block';
+                btn.style.transform = 'rotate(45deg)';
+                myPosts.style.display = 'block';
+            } else {
+                modal.style.display = 'none';
+                btn.style.transform = 'rotate(0)';
+                myPosts.style.display = 'none';
+            }
+        }
+        
+        function handleModalImage(input) {
+            if (modalUploadedImages.length >= 4) {
+                alert('最多4张图片！');
+                return;
+            }
+            
+            var file = input.files[0];
+            if (!file) return;
+            
+            var formData = new FormData();
+            formData.append('image', file);
+            
+            fetch('/community/upload_image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    modalUploadedImages.push(data.filename);
+                    var preview = document.getElementById('modalImagePreview');
+                    var div = document.createElement('div');
+                    div.style.position = 'relative';
+                    div.style.width = '60px';
+                    div.style.height = '60px';
+                    
+                    var img = document.createElement('img');
+                    img.src = data.url;
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '8px';
+                    
+                    var del = document.createElement('button');
+                    del.innerHTML = '✕';
+                    del.style.position = 'absolute';
+                    del.style.top = '-5px';
+                    del.style.right = '-5px';
+                    del.style.width = '18px';
+                    del.style.height = '18px';
+                    del.style.background = '#ff4d4f';
+                    del.style.color = 'white';
+                    del.style.border = 'none';
+                    del.style.borderRadius = '50%';
+                    del.style.cursor = 'pointer';
+                    del.onclick = function() {
+                        modalUploadedImages[modalUploadedImages.length - 1] = null;
+                        div.remove();
+                    };
+                    
+                    div.appendChild(img);
+                    div.appendChild(del);
+                    preview.appendChild(div);
+                    alert('图片上传成功！');
+                }
+                input.value = '';
+            });
+        }
+        
+        function submitModalPost() {
+            var content = document.getElementById('modalContent').value.trim();
+            if (!content) {
+                alert('内容不能为空！');
+                return;
+            }
+            
+            var topic = document.getElementById('modalTopic').value;
+            var is_anonymous = document.getElementById('modalAnonymous').checked;
+            var images = modalUploadedImages.filter(x => x).join(',');
+            
+            var formData = new FormData();
+            formData.append('content', content);
+            formData.append('topic', topic);
+            formData.append('is_anonymous', is_anonymous ? 'on' : '');
+            formData.append('images', images);
+            
+            fetch('/community/post/add', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.text())
+            .then(data => {
+                alert('发布成功！');
+                location.reload();
+            })
+            .catch(e => alert('发布失败: ' + e));
         }
     </script>
 </body>

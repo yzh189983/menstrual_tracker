@@ -26,6 +26,7 @@ app.config['MAIL_DEFAULT_SENDER'] = 'yzh189983@163.com'
 
 # 文件上传配置
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 app.config['AVATAR_FOLDER'] = 'static/avatars'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -2666,7 +2667,13 @@ def community():
     topic_filter = request.args.get('topic', 'all')
     
     query = Post.query
-    if topic_filter != 'all':
+    
+    if topic_filter == 'following':
+        # 只看关注用户的帖子
+        following_ids = [f.following_id for f in UserFollow.query.filter_by(follower_id=current_user.id).all()]
+        following_ids.append(current_user.id)  # 也显示自己的帖子
+        query = query.filter(Post.user_id.in_(following_ids))
+    elif topic_filter != 'all':
         query = query.filter_by(topic=topic_filter)
     
     posts = query.order_by(Post.created_at.desc()).limit(50).all()
@@ -2681,6 +2688,30 @@ def community():
                          current_topic=topic_filter,
                          user=current_user)
 
+@app.route('/community/upload_image', methods=['POST'])
+@login_required
+def community_upload_image():
+    """单独上传图片"""
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'message': '没有图片'})
+    
+    file = request.files['image']
+    if not file or not file.filename:
+        return jsonify({'success': False, 'message': '没有选择图片'})
+    
+    if not allowed_file(file.filename):
+        return jsonify({'success': False, 'message': '不支持的图片格式'})
+    
+    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+    filename = f"{current_user.id}_{int(time.time())}.{ext}"
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    
+    return jsonify({
+        'success': True, 
+        'filename': filename,
+        'url': url_for('static', filename='uploads/' + filename)
+    })
+
 @app.route('/community/post/add', methods=['POST'])
 @login_required
 def community_add_post():
@@ -2693,16 +2724,10 @@ def community_add_post():
     topic = request.form.get('topic', 'general')
     is_anonymous = request.form.get('is_anonymous') == 'on'
     
-    # 处理图片上传
-    images = []
-    if 'image' in request.files:
-        file = request.files['image']
-        if file and file.filename and allowed_file(file.filename):
-            ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
-            if ext:
-                filename = f"{current_user.id}_{int(time.time())}.{ext}"
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                images.append(filename)
+    # 获取图片文件名
+    images_str = request.form.get('images', '')
+    images = images_str.split(',') if images_str else []
+    images = [x for x in images if x]  # 过滤空值
     
     post = Post(
         user_id=current_user.id,

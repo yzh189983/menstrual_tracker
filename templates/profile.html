@@ -367,6 +367,17 @@
     </style>
 </head>
 <body>
+    <script>
+        // 页面加载后立即执行
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('profileForm');
+            if (form) {
+                form.action = '/profile';
+                form.method = 'POST';
+                console.log('Form action set to /profile');
+            }
+        });
+    </script>
     <div class="decoration dec1">🌸</div>
     <div class="decoration dec2">🌺</div>
     <div class="decoration dec3">🌷</div>
@@ -453,6 +464,8 @@
                         <label>🎂 生日</label>
                         <input type="date" name="birthday" value="{{ user.birthday or '' }}">
                     </div>
+                    
+                    <button type="button" class="btn-submit" onclick="saveProfile()">💖 保存修改</button>
                 </div>
 
                 <!-- 情侣关系 -->
@@ -508,13 +521,35 @@
                 </div>
                 {% endif %}
 
-                <button type="submit" class="btn-submit" style="display: block;">💖 保存修改</button>
                 <a href="/export?format=json"><button type="button" class="btn-submit" style="background:#13c2c2;margin-left:10px;">📥 导出日历数据</button></a>
             </form>
         </div>
     </div>
 
     <script>
+        function saveProfile() {
+            var formData = new FormData();
+            formData.append('email', document.querySelector('input[name="email"]').value);
+            formData.append('nickname', document.querySelector('input[name="nickname"]').value);
+            formData.append('phone', document.querySelector('input[name="phone"]').value);
+            formData.append('birthday', document.querySelector('input[name="birthday"]').value);
+            
+            fetch('/profile', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(response) {
+                return response.text();
+            })
+            .then(function(data) {
+                alert('保存成功！');
+                location.reload();
+            })
+            .catch(function(error) {
+                alert('保存失败: ' + error);
+            });
+        }
+        
         function previewAvatar(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
@@ -567,8 +602,8 @@
         
         // 表单提交处理
         document.getElementById('profileForm').addEventListener('submit', function(e) {
-            console.log('表单提交');
-            // 让表单正常提交
+            console.log('表单提交 to /profile');
+            // 正常提交
         });
     </script>
 </body>
