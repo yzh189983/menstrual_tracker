@@ -1,0 +1,112 @@
+/* pages/logs/logs.wxss */
+
+.container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+/* Tab导航 */
+.tabs {
+  display: flex;
+  background-color: #fff;
+  padding: 20rpx;
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx;
+  font-size: 28rpx;
+  color: #666;
+  position: relative;
+}
+
+.tab.active {
+  color: #ff6b9d;
+  font-weight: bold;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60rpx;
+  height: 4rpx;
+  background-color: #ff6b9d;
+  border-radius: 2rpx;
+}
+
+/* 日期选择器 */
+.date-picker {
+  text-align: center;
+  padding: 20rpx;
+  background-color: #fff;
+  margin-bottom: 20rpx;
+  color: #ff6b9d;
+  font-size: 28rpx;
+}
+
+/* 记录列表 */
+.record-list {
+  padding: 20rpx;
+}
+
+.record-item {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.record-date {
+  font-size: 30rpx;
+  color: #333;
+  font-weight: bold;
+  margin-bottom: 15rpx;
+}
+
+.record-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 10rpx;
+}
+
+.record-symptoms,
+.record-plan,
+.record-overtime {
+  font-size: 24rpx;
+  color: #999;
+  padding: 10rpx 0;
+}
+
+.record-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 15rpx;
+  padding-top: 15rpx;
+  border-top: 1rpx solid #f5f5f5;
+}
+
+.delete-btn {
+  color: #ff4d4f;
+  font-size: 24rpx;
+}
+
+/* 空状态 */
+.empty {
+  text-align: center;
+  padding: 100rpx;
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* 加载中 */
+.loading {
+  text-align: center;
+  padding: 30rpx;
+  color: #999;
+}

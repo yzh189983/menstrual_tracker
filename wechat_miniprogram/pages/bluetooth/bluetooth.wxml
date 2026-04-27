@@ -1,0 +1,104 @@
+<!--pages/bluetooth/bluetooth.wxml-->
+<view class="container">
+  <!-- 头部状态 -->
+  <view class="header">
+    <view class="status {{isBluetoothOpen ? 'active' : 'inactive'}}">
+      <icon type="{{isBluetoothOpen ? 'success' : 'warn'}}" size="20"/>
+      <text>{{isBluetoothOpen ? '蓝牙已打开' : '蓝牙未打开'}}</text>
+    </view>
+    
+    <view wx:if="{{connectedDevice}}" class="connected-info">
+      <text>已连接: {{connectedDevice.name || connectedDevice.localName}}</text>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="actions">
+    <button 
+      wx:if="{{!connectedDevice}}" 
+      class="btn-primary" 
+      bindtap="startSearch" 
+      loading="{{isSearching}}"
+    >
+      {{isSearching ? '搜索中...' : '搜索设备'}}
+    </button>
+    
+    <button 
+      wx:if="{{connectedDevice}}" 
+      class="btn-danger" 
+      bindtap="disconnect"
+    >
+      断开连接
+    </button>
+    
+    <button 
+      wx:if="{{connectedDevice}}" 
+      class="btn-secondary" 
+      bindtap="restartSearch"
+    >
+      重新搜索
+    </button>
+  </view>
+
+  <!-- 设备列表 -->
+  <view class="device-list" wx:if="{{devices.length > 0}}">
+    <view class="list-title">
+      <text>找到 {{devices.length}} 个设备</text>
+      <text class="refresh" bindtap="refreshDevices">刷新</text>
+    </view>
+    
+    <scroll-view scroll-y class="devices">
+      <block wx:for="{{devices}}" wx:key="deviceId">
+        <view 
+          class="device-item {{connectedDevice.deviceId === item.deviceId ? 'connected' : ''}}" 
+          bindtap="connect" 
+          data-device="{{item}}"
+        >
+          <view class="device-info">
+            <text class="device-name">{{item.name || item.localName || '未知设备'}}</text>
+            <text class="device-id">RSSI: {{item.RSSI}}</text>
+          </view>
+          <view wx:if="{{connectedDevice.deviceId === item.deviceId}}" class="connected-tag">
+            已连接
+          </view>
+          <icon wx:else type="right" size="20" color="#999"/>
+        </view>
+      </block>
+    </scroll-view>
+  </view>
+
+  <!-- 搜索中提示 -->
+  <view wx:if="{{isSearching}}" class="searching-tip">
+    <view class="spinner"></view>
+    <text>正在搜索周边蓝牙设备...</text>
+  </view>
+
+  <!-- 无设备提示 -->
+  <view wx:if="{{!isSearching && devices.length === 0 && searchStatus === 'idle'}}" class="empty-tip">
+    <text>点击"搜索设备"开始扫描</text>
+  </view>
+
+  <!-- 日志区域 -->
+  <view class="log-area">
+    <view class="log-title">日志</view>
+    <scroll-view scroll-y class="logs">
+      <block wx:for="{{logs}}" wx:key="index">
+        <view class="log-item">
+          <text class="log-time">[{{item.time}}]</text>
+          <text class="log-msg">{{item.msg}}</text>
+        </view>
+      </block>
+    </scroll-view>
+  </view>
+
+  <!-- 使用说明 -->
+  <view class="guide">
+    <view class="guide-title">使用说明</view>
+    <view class="guide-content">
+      <text>1. 确保你的语音挂件/蓝牙耳机已打开</text>
+      <text>2. 点击"搜索设备"扫描周边设备</text>
+      <text>3. 在设备列表中选择你的挂件设备</text>
+      <text>4. 连接成功后即可使用语音功能</text>
+    </view>
+  </view>
+</view>

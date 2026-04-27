@@ -1,0 +1,92 @@
+<!--pages/logs/logs.wxml-->
+<view class="container">
+  <!-- Tab导航 -->
+  <view class="tabs">
+    <view class="tab {{currentTab === 'period' ? 'active' : ''}}" bindtap="switchTab" data-tab="period">
+      月经记录
+    </view>
+    <view class="tab {{currentTab === 'study' ? 'active' : ''}}" bindtap="switchTab" data-tab="study">
+      学习记录
+    </view>
+    <view class="tab {{currentTab === 'work' ? 'active' : ''}}" bindtap="switchTab" data-tab="work">
+      工作记录
+    </view>
+  </view>
+
+  <!-- 月经记录 -->
+  <view wx:if="{{currentTab === 'period'}}" class="record-list">
+    <picker mode="date" fields="month" value="{{currentYear}}-{{currentMonth}}" bindchange="bindDateChange">
+      <view class="date-picker">
+        {{currentYear}}年{{currentMonth}}月 ▼
+      </view>
+    </picker>
+
+    <block wx:if="{{periodRecords.length > 0}}">
+      <view class="record-item" wx:for="{{periodRecords}}" wx:key="id">
+        <view class="record-date">{{item.start_date}} ~ {{item.end_date}}</view>
+        <view class="record-detail">
+          <text>经量: {{item.flow}}</text>
+          <text>疼痛: {{item.pain_level}}/10</text>
+        </view>
+        <view class="record-symptoms" wx:if="{{item.symptoms}}">
+          症状: {{item.symptoms}}
+        </view>
+        <view class="record-actions">
+          <text class="delete-btn" bindtap="deletePeriod" data-id="{{item.id}}">删除</text>
+        </view>
+      </view>
+    </block>
+    <view wx:else class="empty">
+      <text>暂无记录</text>
+    </view>
+  </view>
+
+  <!-- 学习记录 -->
+  <view wx:if="{{currentTab === 'study'}}" class="record-list">
+    <block wx:if="{{studyRecords.length > 0}}">
+      <view class="record-item" wx:for="{{studyRecords}}" wx:key="id">
+        <view class="record-date">{{item.date}}</view>
+        <view class="record-detail">
+          <text>科目: {{item.subject}}</text>
+          <text>时长: {{item.duration}}分钟</text>
+        </view>
+        <view class="record-plan" wx:if="{{item.plan}}">
+          计划: {{item.plan}}
+        </view>
+        <view class="record-actions">
+          <text class="delete-btn" bindtap="deleteStudy" data-id="{{item.id}}">删除</text>
+        </view>
+      </view>
+    </block>
+    <view wx:else class="empty">
+      <text>暂无学习记录</text>
+    </view>
+  </view>
+
+  <!-- 工作记录 -->
+  <view wx:if="{{currentTab === 'work'}}" class="record-list">
+    <block wx:if="{{workRecords.length > 0}}">
+      <view class="record-item" wx:for="{{workRecords}}" wx:key="id">
+        <view class="record-date">{{item.date}}</view>
+        <view class="record-detail">
+          <text>任务: {{item.task}}</text>
+          <text>时长: {{item.task_duration}}分钟</text>
+        </view>
+        <view class="record-overtime" wx:if="{{item.overtime > 0}}">
+          加班: {{item.overtime}}分钟
+        </view>
+        <view class="record-actions">
+          <text class="delete-btn" bindtap="deleteWork" data-id="{{item.id}}">删除</text>
+        </view>
+      </view>
+    </block>
+    <view wx:else class="empty">
+      <text>暂无工作记录</text>
+    </view>
+  </view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中...</text>
+  </view>
+</view>

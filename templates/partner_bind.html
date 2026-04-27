@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💑 绑定情侣</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #ffe6f2 0%, #fff0f5 50%, #ffdae6 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 25px 25px 0 0;
+            box-shadow: 0 10px 30px rgba(255, 182, 193, 0.4);
+        }
+
+        .header h1 {
+            color: #ff6b9d;
+            font-size: 1.8em;
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 0 0 25px 25px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(255, 182, 193, 0.4);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ffe6f2;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #ff6b9d;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 25px;
+            border: none;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 107, 157, 0.4);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #ff6b9d;
+            text-decoration: none;
+        }
+
+        .tips {
+            background: #fff9fb;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .tips h3 {
+            color: #ff6b9d;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .tips ul {
+            color: #666;
+            padding-left: 20px;
+        }
+
+        .tips li {
+            margin-bottom: 8px;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .flash.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('partner_page') }}" class="back-link">← 返回</a>
+        
+        <div class="header">
+            <h1>💑 绑定情侣</h1>
+        </div>
+
+        <div class="form-card">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="tips">
+                <h3>📝 绑定说明</h3>
+                <ul>
+                    <li>输入对方注册的用户名进行绑定</li>
+                    <li>绑定后双方可以查看对方的经期、学习、工作记录</li>
+                    <li>对方也需绑定你才能成功配对</li>
+                    <li>随时可以解绑</li>
+                </ul>
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username">对方用户名</label>
+                    <input type="text" id="username" name="username" placeholder="请输入对方的用户名" required>
+                </div>
+                <button type="submit" class="btn btn-primary">绑定情侣</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -26,6 +26,7 @@ app.config['MAIL_DEFAULT_SENDER'] = 'yzh189983@163.com'
 
 # 文件上传配置
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 app.config['AVATAR_FOLDER'] = 'static/avatars'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -60,8 +61,10 @@ class User(UserMixin, db.Model):
     birthday = db.Column(db.Date)
     avatar = db.Column(db.String(200))
     is_admin = db.Column(db.Boolean, default=False)  # 管理员标识
+    partner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # 情侣绑定
     created_at = db.Column(db.DateTime, default=datetime.now)
     periods = db.relationship('Period', backref='user', lazy=True)
+    partner = db.relationship('User', remote_side=[id], backref='partner_of_me')
 
 # 月经记录模型
 class Period(db.Model):
@@ -70,6 +73,8 @@ class Period(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     flow = db.Column(db.String(20), default='medium')
+    pain_level = db.Column(db.Integer, default=0)  # 疼痛等级 0-10
+    symptoms = db.Column(db.String(200))  # 症状，多个用逗号分隔
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -116,7 +121,8 @@ class Friend(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending/accepted
+    status = db.Column(db.String(20), default='pending')  # pending/accepted/rejected
+    relation_type = db.Column(db.String(20), default='friend')  # friend/partner
     created_at = db.Column(db.DateTime, default=datetime.now)
     
     user = db.relationship('User', foreign_keys=[user_id], backref='friends')
@@ -151,6 +157,54 @@ class WrongQuestion(db.Model):
     
     user = db.relationship('User', backref='wrong_questions')
 
+# ========== 社区模块 ==========
+
+# 帖子模型
+class Post(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    images = db.Column(db.String(500))  # 多图用逗号分隔
+    topic = db.Column(db.String(50), default='general')  # 话题标签
+    is_anonymous = db.Column(db.Boolean, default=False)
+    likes_count = db.Column(db.Integer, default=0)
+    comments_count = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    user = db.relationship('User', backref='posts')
+
+# 帖子点赞
+class PostLike(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    post = db.relationship('Post', backref='likes')
+
+# 帖子评论
+class PostComment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('post_comment.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    user = db.relationship('User', backref='post_comments')
+    post = db.relationship('Post', backref='comments')
+    parent = db.relationship('PostComment', remote_side=[id], backref='replies')
+
+# 用户关注
+class UserFollow(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    follower_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    following_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    follower = db.relationship('User', foreign_keys=[follower_id], backref='following')
+    following = db.relationship('User', foreign_keys=[following_id], backref='followers')
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -160,7 +214,7 @@ def load_user(user_id):
 @login_required
 def index():
     periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).all()
-    return render_template('calendar.html', periods=periods, user=current_user, timedelta=timedelta)
+    return render_template('calendar.html', periods=periods, user=current_user, timedelta=timedelta, datetime=datetime)
 
 # 学习记录页面
 @app.route('/study')
@@ -202,6 +256,43 @@ def delete_study(record_id):
         db.session.delete(record)
         db.session.commit()
         flash('学习记录已删除', 'success')
+    return redirect(url_for('study'))
+
+# 编辑学习记录
+@app.route('/study/edit/<int:record_id>', methods=['POST'])
+@login_required
+def edit_study(record_id):
+    record = StudyRecord.query.get_or_404(record_id)
+    if record.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权修改'})
+    
+    record.subject = request.form.get('subject', record.subject)
+    record.duration = int(request.form.get('duration', record.duration))
+    record.date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
+    record.plan = request.form.get('plan', record.plan)
+    record.notes = request.form.get('notes', record.notes)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '更新成功'})
+
+# 批量删除学习记录
+@app.route('/study/batch_delete', methods=['POST'])
+@login_required
+def batch_delete_study():
+    ids = request.form.get('ids', '').split(',')
+    deleted_count = 0
+    for id_str in ids:
+        if id_str.strip():
+            try:
+                rid = int(id_str.strip())
+                record = StudyRecord.query.filter_by(id=rid, user_id=current_user.id).first()
+                if record:
+                    db.session.delete(record)
+                    deleted_count += 1
+            except:
+                pass
+    db.session.commit()
+    flash(f'已删除 {deleted_count} 条学习记录', 'success')
     return redirect(url_for('study'))
 
 # API: 获取学习记录数据
@@ -334,6 +425,50 @@ def delete_work(record_id):
         db.session.delete(record)
         db.session.commit()
         flash('工作记录已删除', 'success')
+    return redirect(url_for('work'))
+
+# 编辑工作记录
+@app.route('/work/edit/<int:record_id>', methods=['POST'])
+@login_required
+def edit_work(record_id):
+    record = WorkRecord.query.get_or_404(record_id)
+    if record.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权修改'})
+    
+    record.task = request.form.get('task', record.task)
+    record.task_duration = int(request.form.get('task_duration', record.task_duration))
+    record.work_start = request.form.get('work_start') or None
+    record.work_end = request.form.get('work_end') or None
+    if record.work_start and record.work_end:
+        try:
+            start = datetime.strptime(record.work_start, '%H:%M')
+            end = datetime.strptime(record.work_end, '%H:%M')
+            record.overtime = max(0, int((end - start).total_seconds() / 60) - 480)
+        except:
+            pass
+    record.notes = request.form.get('notes', record.notes)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '更新成功'})
+
+# 批量删除工作记录
+@app.route('/work/batch_delete', methods=['POST'])
+@login_required
+def batch_delete_work():
+    ids = request.form.get('ids', '').split(',')
+    deleted_count = 0
+    for id_str in ids:
+        if id_str.strip():
+            try:
+                rid = int(id_str.strip())
+                record = WorkRecord.query.filter_by(id=rid, user_id=current_user.id).first()
+                if record:
+                    db.session.delete(record)
+                    deleted_count += 1
+            except:
+                pass
+    db.session.commit()
+    flash(f'已删除 {deleted_count} 条工作记录', 'success')
     return redirect(url_for('work'))
 
 # 总日历页面 - 查看所有记录
@@ -850,7 +985,14 @@ def profile():
         flash('个人信息更新成功！', 'success')
         return redirect(url_for('profile'))
     
-    return render_template('profile.html', user=current_user)
+    # 获取待处理的情侣请求
+    partner_requests = Friend.query.filter_by(
+        friend_id=current_user.id,
+        relation_type='partner',
+        status='pending'
+    ).all()
+    
+    return render_template('profile.html', user=current_user, partner_requests=partner_requests)
 
 # 头像文件访问
 @app.route('/avatars/<filename>')
@@ -864,6 +1006,10 @@ def add_period():
     start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
     end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
     flow = request.form.get('flow', 'medium')
+    pain_level = int(request.form.get('pain_level', 0))
+    # 多个checkbox用getlist获取，用逗号分隔
+    symptoms_list = request.form.getlist('symptoms')
+    symptoms = ','.join(symptoms_list) if symptoms_list else ''
     notes = request.form.get('notes', '')
     
     period = Period(
@@ -871,6 +1017,8 @@ def add_period():
         start_date=start_date,
         end_date=end_date,
         flow=flow,
+        pain_level=pain_level,
+        symptoms=symptoms,
         notes=notes
     )
     db.session.add(period)
@@ -890,6 +1038,66 @@ def delete_period(period_id):
         flash('记录已删除', 'success')
     return redirect(url_for('index'))
 
+# 编辑记录
+@app.route('/edit/<int:period_id>', methods=['POST'])
+@login_required
+def edit_period(period_id):
+    period = Period.query.get_or_404(period_id)
+    if period.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权修改'})
+    
+    period.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+    period.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+    period.flow = request.form.get('flow', period.flow)
+    period.pain_level = int(request.form.get('pain_level', period.pain_level or 0))
+    period.symptoms = request.form.get('symptoms', period.symptoms or '')
+    period.notes = request.form.get('notes', period.notes)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '更新成功'})
+
+# 编辑页面
+@app.route('/edit_page/<int:period_id>', methods=['GET', 'POST'])
+@login_required
+def edit_page(period_id):
+    period = Period.query.get_or_404(period_id)
+    if period.user_id != current_user.id:
+        flash('无权修改此记录', 'error')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        period.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+        period.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+        period.flow = request.form.get('flow', period.flow)
+        period.pain_level = int(request.form.get('pain_level', 0))
+        period.symptoms = request.form.get('symptoms', '')
+        period.notes = request.form.get('notes', '')
+        db.session.commit()
+        flash('记录更新成功！', 'success')
+        return redirect(url_for('index'))
+    
+    return render_template('edit_period.html', period=period)
+
+# 批量删除记录
+@app.route('/batch_delete', methods=['POST'])
+@login_required
+def batch_delete_period():
+    ids = request.form.get('ids', '').split(',')
+    deleted_count = 0
+    for id_str in ids:
+        if id_str.strip():
+            try:
+                pid = int(id_str.strip())
+                period = Period.query.filter_by(id=pid, user_id=current_user.id).first()
+                if period:
+                    db.session.delete(period)
+                    deleted_count += 1
+            except:
+                pass
+    db.session.commit()
+    flash(f'已删除 {deleted_count} 条记录', 'success')
+    return redirect(url_for('index'))
+
 # API: 获取当前用户数据
 @app.route('/api/data')
 @login_required
@@ -902,9 +1110,174 @@ def api_data():
             'start_date': p.start_date.strftime('%Y-%m-%d'),
             'end_date': p.end_date.strftime('%Y-%m-%d'),
             'flow': p.flow,
+            'pain_level': p.pain_level or 0,
+            'symptoms': p.symptoms or '',
             'notes': p.notes
         })
     return jsonify(data)
+
+# 数据导出
+@app.route('/export')
+@login_required
+def export_data():
+    import json
+    format_type = request.args.get('format', 'xlsx')
+    
+    # 获取所有数据
+    periods = Period.query.filter_by(user_id=current_user.id).all()
+    studies = StudyRecord.query.filter_by(user_id=current_user.id).all()
+    works = WorkRecord.query.filter_by(user_id=current_user.id).all()
+    
+    if format_type == 'xlsx':
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, PatternFill
+        
+        wb = Workbook()
+        
+        # 月经记录Sheet
+        ws1 = wb.active
+        ws1.title = "月经记录"
+        headers1 = ['开始日期', '结束日期', '经量', '疼痛等级', '症状', '备注']
+        ws1.append(headers1)
+        for p in periods:
+            flow_name = {'light': '少量', 'medium': '中等', 'heavy': '大量'}.get(p.flow, p.flow)
+            ws1.append([
+                p.start_date.strftime('%Y-%m-%d'),
+                p.end_date.strftime('%Y-%m-%d'),
+                flow_name,
+                p.pain_level or 0,
+                p.symptoms or '',
+                p.notes or ''
+            ])
+        
+        # 学习记录Sheet
+        ws2 = wb.create_sheet("学习记录")
+        headers2 = ['日期', '科目', '时长(分钟)', '计划', '备注']
+        ws2.append(headers2)
+        for s in studies:
+            ws2.append([
+                s.date.strftime('%Y-%m-%d'),
+                s.subject,
+                s.duration,
+                s.plan or '',
+                s.notes or ''
+            ])
+        
+        # 工作记录Sheet
+        ws3 = wb.create_sheet("工作记录")
+        headers3 = ['日期', '任务', '时长(分钟)', '上班时间', '下班时间', '加班时长(分钟)', '备注']
+        ws3.append(headers3)
+        for w in works:
+            ws3.append([
+                w.date.strftime('%Y-%m-%d'),
+                w.task or '',
+                w.task_duration,
+                w.work_start.strftime('%H:%M') if w.work_start else '',
+                w.work_end.strftime('%H:%M') if w.work_end else '',
+                w.overtime,
+                w.notes or ''
+            ])
+        
+        from io import BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        response = app.response_class(
+            response=output.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename=日历记录_{datetime.now().strftime("%Y%m%d")}.xlsx'}
+        )
+        return response
+    
+    # JSON格式
+    export_data = {
+        'export_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'user': current_user.username,
+        'periods': [{
+            'start_date': p.start_date.strftime('%Y-%m-%d'),
+            'end_date': p.end_date.strftime('%Y-%m-%d'),
+            'flow': p.flow,
+            'pain_level': p.pain_level or 0,
+            'symptoms': p.symptoms or '',
+            'notes': p.notes
+        } for p in periods],
+        'studies': [{
+            'date': s.date.strftime('%Y-%m-%d'),
+            'subject': s.subject,
+            'duration': s.duration,
+            'plan': s.plan or '',
+            'notes': s.notes or ''
+        } for s in studies],
+        'works': [{
+            'date': w.date.strftime('%Y-%m-%d'),
+            'task': w.task or '',
+            'duration': w.task_duration,
+            'work_start': w.work_start.strftime('%H:%M') if w.work_start else '',
+            'work_end': w.work_end.strftime('%H:%M') if w.work_end else '',
+            'overtime': w.overtime,
+            'notes': w.notes or ''
+        } for w in works]
+    }
+    
+    if format_type == 'json':
+        response = app.response_class(
+            response=json.dumps(export_data, ensure_ascii=False, indent=2),
+            mimetype='application/json',
+            headers={'Content-Disposition': f'attachment; filename=calendar_export_{datetime.now().strftime("%Y%m%d")}.json'}
+        )
+        return response
+    
+    return jsonify({'success': False, 'message': '不支持的格式'})
+    
+    return jsonify({'success': False, 'message': '不支持的格式'})
+
+# 排卵期提醒计算
+@app.route('/api/ovulation')
+@login_required
+def get_ovulation_info():
+    """获取排卵期信息"""
+    periods = Period.query.filter_by(user_id=current_user.id).order_by(Period.start_date.desc()).limit(10).all()
+    
+    if len(periods) < 2:
+        return jsonify({'has_data': False, 'message': '需要至少2条经期记录'})
+    
+    # 计算平均周期
+    cycles = []
+    for i in range(1, len(periods)):
+        cycle = (periods[i-1].start_date - periods[i].start_date).days
+        if 20 <= cycle <= 45:  # 合理周期范围
+            cycles.append(cycle)
+    
+    if not cycles:
+        return jsonify({'has_data': False, 'message': '周期数据不足以计算'})
+    
+    avg_cycle = sum(cycles) / len(cycles)
+    last_period = periods[0]
+    
+    # 排卵日 = 下次经期开始日 - 14天
+    # 假设周期为28天，排卵日在经期开始后第14天
+    next_period_start = last_period.start_date + timedelta(days=int(avg_cycle))
+    ovulation_date = next_period_start - timedelta(days=14)
+    
+    # 排卵期 = 排卵日前5天 + 后4天
+    fertile_start = ovulation_date - timedelta(days=5)
+    fertile_end = ovulation_date + timedelta(days=4)
+    
+    today = datetime.now().date()
+    
+    return jsonify({
+        'has_data': True,
+        'avg_cycle': int(avg_cycle),
+        'last_period': last_period.start_date.strftime('%Y-%m-%d'),
+        'next_period': next_period_start.strftime('%Y-%m-%d'),
+        'ovulation_date': ovulation_date.strftime('%Y-%m-%d'),
+        'fertile_start': fertile_start.strftime('%Y-%m-%d'),
+        'fertile_end': fertile_end.strftime('%Y-%m-%d'),
+        'days_until_ovulation': (ovulation_date - today).days,
+        'is_fertile': fertile_start <= today <= fertile_end,
+        'is_ovulation_day': today == ovulation_date
+    })
 
 # 检查邮箱是否已注册 (AJAX)
 @app.route('/api/check_email')
@@ -1069,7 +1442,276 @@ def ai_chat():
         'reply': ai_response
     })
 
-# AI 周报生成
+# 意图识别和提取
+import re
+from datetime import datetime, timedelta
+
+def extract_date(text):
+    """从文本中提取日期"""
+    today = datetime.now().date()
+    
+    # 处理"今天"、"明天"、"后天"
+    if '今天' in text:
+        return today
+    if '明天' in text:
+        return today + timedelta(days=1)
+    if '后天' in text:
+        return today + timedelta(days=2)
+    if '昨天' in text:
+        return today - timedelta(days=1)
+    if '前天' in text:
+        return today - timedelta(days=2)
+    
+    # 处理"周一"~"周日"
+    weekdays = {'周一': 0, '周二': 1, '周三': 2, '周四': 3, '周五': 4, '周六': 5, '周日': 6}
+    for day, offset in weekdays.items():
+        if day in text:
+            current_weekday = today.weekday()
+            days_to_add = (offset - current_weekday + 7) % 7
+            if days_to_add == 0:
+                days_to_add = 7
+            return today + timedelta(days=days_to_add)
+    
+    # 处理"X月X日"或"X/X"
+    month_day_pattern = re.search(r'(\d{1,2})[月/](\d{1,2})', text)
+    if month_day_pattern:
+        month = int(month_day_pattern.group(1))
+        day = int(month_day_pattern.group(2))
+        year = today.year
+        if month < today.month:
+            year += 1
+        try:
+            return datetime(year, month, day).date()
+        except:
+            pass
+    
+    # 处理"X号"
+    day_pattern = re.search(r'(\d{1,2})号', text)
+    if day_pattern:
+        day = int(day_pattern.group(1))
+        month = today.month
+        year = today.year
+        if day < today.day:
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+        try:
+            return datetime(year, month, day).date()
+        except:
+            pass
+    
+    return None
+
+def extract_time(text):
+    """从文本中提取时间"""
+    time_pattern = re.search(r'(\d{1,2})[点时](\d{1,2})?分?', text)
+    if time_pattern:
+        hour = int(time_pattern.group(1))
+        minute = int(time_pattern.group(2)) if time_pattern.group(2) else 0
+        return f"{hour:02d}:{minute:02d}"
+    
+    am_pattern = re.search(r'上午(\d{1,2})[点时]', text)
+    if am_pattern:
+        hour = int(am_pattern.group(1))
+        return f"{hour:02d}:00"
+    
+    pm_pattern = re.search(r'下午(\d{1,2})[点时]', text)
+    if pm_pattern:
+        hour = int(pm_pattern.group(1)) + 12
+        if hour >= 24:
+            hour -= 24
+        return f"{hour:02d}:00"
+    
+    return None
+
+def extract_duration(text):
+    """从文本中提取时长（分钟）"""
+    hour_pattern = re.search(r'(\d{1,2})小时', text)
+    if hour_pattern:
+        return int(hour_pattern.group(1)) * 60
+    
+    min_pattern = re.search(r'(\d{1,2})分钟', text)
+    if min_pattern:
+        return int(min_pattern.group(1))
+    
+    min_pattern2 = re.search(r'(\d{1,2})分', text)
+    if min_pattern2:
+        return int(min_pattern2.group(1))
+    
+    return None
+
+def recognize_intent(text):
+    """识别用户意图"""
+    if any(kw in text for kw in ['月经', '经期', '大姨妈', '来月经']):
+        return 'period'
+    if any(kw in text for kw in ['学习', '看书', '上课', '读书', '自习']):
+        return 'study'
+    if any(kw in text for kw in ['工作', '上班', '开会', '会议', '任务']):
+        return 'work'
+    if any(kw in text for kw in ['查看', '查询', '看看', '有什么', '日程']):
+        return 'query'
+    return 'unknown'
+
+def process_voice_command(message, user_id=1):
+    """处理语音命令 - 自动提取和执行"""
+    intent = recognize_intent(message)
+    date = extract_date(message)
+    time = extract_time(message)
+    duration = extract_duration(message)
+    
+    extracted_info = {
+        'intent': intent,
+        'date': date.strftime('%Y-%m-%d') if date else None,
+        'time': time,
+        'duration': duration,
+        'original_message': message
+    }
+    
+    if intent == 'period':
+        return handle_period_voice(message, extracted_info, user_id)
+    elif intent == 'study':
+        return handle_study_voice(message, extracted_info, user_id)
+    elif intent == 'work':
+        return handle_work_voice(message, extracted_info, user_id)
+    elif intent == 'query':
+        return handle_query_voice(message, user_id)
+    else:
+        return general_voice_reply(message)
+
+def handle_period_voice(message, info, user_id):
+    """处理月经记录语音"""
+    flow = 'medium'
+    if any(kw in message for kw in ['量多', '很多', '大量']):
+        flow = 'heavy'
+    elif any(kw in message for kw in ['量少', '很少', '少量']):
+        flow = 'light'
+    
+    pain_level = 0
+    pain_match = re.search(r'(\d+)分?疼痛?', message)
+    if pain_match:
+        pain_level = int(pain_match.group(1))
+    elif '很痛' in message:
+        pain_level = 7
+    elif '痛' in message:
+        pain_level = 5
+    
+    symptoms = []
+    symptom_keywords = {'肚子疼': '腹痛', '腰疼': '腰痛', '疲劳': '疲劳', 
+                       '困': '困倦', '长痘': '长痘'}
+    for kw, symptom in symptom_keywords.items():
+        if kw in message:
+            symptoms.append(symptom)
+    
+    date_str = info.get('date')
+    if not date_str:
+        return {
+            'success': True,
+            'reply': "好的，要帮你记录月经呀。请告诉我开始日期是哪天？比如'今天'、'明天'或者'3月20号'~",
+            'extracted_info': info
+        }
+    
+    # 转换为date对象
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    
+    existing = Period.query.filter_by(user_id=user_id, start_date=date_obj).first()
+    if existing:
+        return {'success': True, 'reply': f"你{date_str}的月经记录已经有了。要修改吗？", 'record_id': existing.id}
+    
+    period = Period(user_id=user_id, start_date=date_obj, end_date=date_obj,
+                   flow=flow, pain_level=pain_level, symptoms=','.join(symptoms) if symptoms else '')
+    db.session.add(period)
+    db.session.commit()
+    
+    return {'success': True, 'reply': f"好啦，已记录！\n📅 {date_str}\n💧 经量：{flow}\n😖 疼痛：{pain_level}/10", 'record_id': period.id}
+
+def handle_study_voice(message, info, user_id):
+    """处理学习记录语音"""
+    subject = '学习'
+    subjects = {'英语': '英语', '数学': '数学', '语文': '语文', '物理': '物理', '化学': '化学'}
+    for kw, sub in subjects.items():
+        if kw in message:
+            subject = sub
+            break
+    
+    date_str = info.get('date') or datetime.now().date().strftime('%Y-%m-%d')
+    # 转换为date对象
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    duration = info.get('duration') or 60
+    
+    record = StudyRecord(user_id=user_id, date=date_obj, subject=subject,
+                         duration=duration, notes=f"语音记录")
+    db.session.add(record)
+    db.session.commit()
+    
+    return {'success': True, 'reply': f"学习记录已添加！\n📚 {subject}\n📅 {date_str}\n⏰ {duration}分钟", 'record_id': record.id}
+
+def handle_work_voice(message, info, user_id):
+    """处理工作记录语音"""
+    task = "工作任务"
+    task_keywords = {'开会': '开会', '会议': '会议', '上班': '上班', '项目': '项目', '任务': '任务'}
+    for kw, t in task_keywords.items():
+        if kw in message:
+            task = t
+            break
+    
+    date_str = info.get('date') or datetime.now().date().strftime('%Y-%m-%d')
+    # 转换为date对象
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    duration = info.get('duration') or 60
+    
+    record = WorkRecord(user_id=user_id, date=date_obj, task=task,
+                       task_duration=duration, notes=f"语音记录")
+    db.session.add(record)
+    db.session.commit()
+    
+    return {'success': True, 'reply': f"工作记录已添加！\n📋 {task}\n📅 {date_str}\n⏰ {duration}分钟", 'record_id': record.id}
+
+def handle_query_voice(message, user_id):
+    """处理查询语音"""
+    today = datetime.now().date()
+    
+    if '今天' in message:
+        periods = Period.query.filter_by(user_id=user_id, start_date=today).all()
+        studies = StudyRecord.query.filter_by(user_id=user_id, date=today).all()
+        works = WorkRecord.query.filter_by(user_id=user_id, date=today).all()
+        
+        reply = f"📅 今天的日程：\n"
+        if periods: reply += f"🌸 月经记录：{len(periods)}条\n"
+        if studies: reply += f"📚 学习：{len(studies)}条\n"
+        if works: reply += f"💼 工作：{len(works)}条\n"
+        if not periods and not studies and not works: reply += "暂无记录"
+        return {'success': True, 'reply': reply}
+    
+    if '本月' in message:
+        periods = Period.query.filter_by(user_id=user_id).all()
+        return {'success': True, 'reply': f"本月你有 {len(periods)} 条月经记录"}
+    
+    return {'success': True, 'reply': "可以说'查看今天日程'或'查看本月记录'"}
+
+def general_voice_reply(message):
+    """通用对话"""
+    system_prompt = """你是一个智能日历助手，用友好简洁的语言回复。适当用emoji。"""
+    ai_response = call_deepseek(message, system_prompt)
+    return {'success': True, 'reply': ai_response}
+
+# 语音对话接口
+@app.route('/api/voice/chat', methods=['POST'])
+def voice_chat():
+    """小程序语音对话接口 - 带意图识别"""
+    data = request.get_json()
+    message = data.get('message', '')
+    user_id = data.get('user_id', 1)
+    
+    if not message:
+        return jsonify({'success': False, 'message': '请输入内容'})
+    
+    result = process_voice_command(message, user_id)
+    return jsonify(result)
+
+@app.route('/api/voice/info', methods=['GET'])
+def get_voice_info():
+    return jsonify({'success': True, 'message': '意图识别接口正常'})
 @app.route('/api/ai/report')
 @login_required
 def ai_generate_report():
@@ -1535,6 +2177,698 @@ def ai_accept_study_plan():
         'added_count': added_count,
         'message': f'成功添加 {added_count} 条学习记录'
     })
+
+# ==================== 工作 AI 功能 ====================
+
+@app.route('/api/ai/work/plan', methods=['POST'])
+@login_required
+def ai_work_plan():
+    """生成工作计划"""
+    data = request.get_json()
+    task = data.get('task', '')
+    goal = data.get('goal', '')
+    days = data.get('days', 7)
+    
+    if not task:
+        return jsonify({'success': False, 'message': '请输入工作任务'})
+    
+    prompt = f"""请为用户生成一个{days}天的工作计划。
+
+工作内容: {task}
+工作目标: {goal if goal else '暂无具体目标'}
+
+请生成一个详细的工作计划，必须包含以下内容：
+
+📅 **第1天到第{days}天** 每天都需要有：
+1. 📋 工作任务：具体要完成的工作
+2. ⏱️ 预计时长：建议工作多少小时
+3. 🎯 今日目标：今天要达成什么
+4. 💡 工作方法：用什么方法提高效率
+
+请严格按照以下表格格式输出：
+| 天数 | 工作任务 | 预计时长 | 今日目标 | 工作方法 |
+|------|----------|----------|----------|----------|
+| 第1天 | 任务 | X小时 | 目标 | 方法 |
+| 第2天 | 任务 | X小时 | 目标 | 方法 |
+...（依次列出所有{days}天）
+
+使用emoji让计划更生动，回复使用中文。"""
+    
+    system_prompt = """你是一个专业、高效的工作顾问。你擅长制定工作计划，帮助用户提高工作效率。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'plan': ai_response
+    })
+
+@app.route('/api/ai/work/analyze')
+@login_required
+def ai_work_analyze():
+    """分析工作情况和加班数据"""
+    records = WorkRecord.query.filter_by(user_id=current_user.id).order_by(WorkRecord.date.desc()).limit(20).all()
+    
+    if not records:
+        return jsonify({'success': False, 'message': '暂无工作记录，无法分析'})
+    
+    total_task_duration = sum(r.task_duration for r in records)
+    total_overtime = sum(r.overtime for r in records)
+    overtime_days = sum(1 for r in records if r.overtime > 0)
+    
+    weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+    weekday_stats = {i: {'task': 0, 'overtime': 0} for i in range(7)}
+    for r in records:
+        weekday_stats[r.date.weekday()]['task'] += r.task_duration
+        weekday_stats[r.date.weekday()]['overtime'] += r.overtime
+    
+    busiest_day = max(weekday_stats, key=lambda x: weekday_stats[x]['task'])
+    
+    history_text = "\n".join([
+        f"- {r.date}: {r.task or '打卡'}, 任务{r.task_duration}分钟, 加班{r.overtime}分钟"
+        for r in records[:15]
+    ])
+    
+    prompt = f"""请分析用户的工作数据：
+
+工作记录：
+{history_text}
+
+统计数据：
+- 总任务时长: {total_task_duration} 分钟
+- 总加班时长: {total_overtime} 分钟
+- 加班天数: {overtime_days} 天
+- 最忙工作日: {weekdays[busiest_day]}
+
+请给出：
+1. 工作效率评分 (1-10分)
+2. 工作习惯分析
+3. 加班问题诊断
+4. 改进建议
+
+回复使用中文，结构清晰。"""
+    
+    system_prompt = """你是一个专业的工作效率分析师。"""
+    
+    ai_response = call_deepseek(prompt, system_prompt)
+    
+    return jsonify({
+        'success': True,
+        'analysis': ai_response,
+        'stats': {'total_task_duration': total_task_duration, 'total_overtime': total_overtime, 'busiest_day': weekdays[busiest_day]}
+    })
+
+@app.route('/api/ai/work/weeklyReport')
+@login_required
+def ai_weekly_report():
+    """生成工作周报"""
+    today = datetime.now().date()
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    
+    records = WorkRecord.query.filter(
+        WorkRecord.user_id == current_user.id,
+        WorkRecord.date >= week_start,
+        WorkRecord.date <= week_end
+    ).order_by(WorkRecord.date).all()
+    
+    if not records:
+        return jsonify({'success': False, 'message': '本周暂无工作记录'})
+    
+    total_duration = sum(r.task_duration for r in records)
+    total_overtime = sum(r.overtime for r in records)
+    
+    history_text = "\n".join([
+        f"- {r.date}: {r.task or '打卡'}, {r.task_duration}分钟"
+        for r in records
+    ])
+    
+    prompt = f"""请根据用户本周的工作记录生成周报：
+
+本周记录：
+{history_text}
+
+统计：总时长{total_duration}分钟，加班{total_overtime}分钟
+
+请生成工作周报，包括：本周工作内容、数据统计、改进建议。"""
+    
+    ai_response = call_deepseek(prompt, "你是一个专业的工作周报助手。")
+    
+    return jsonify({
+        'success': True,
+        'report': ai_response,
+        'stats': {'total_hours': round(total_duration/60, 1), 'overtime_hours': round(total_overtime/60, 1)}
+    })
+
+@app.route('/api/ai/work/acceptPlan', methods=['POST'])
+@login_required
+def ai_accept_work_plan():
+    """接受工作计划"""
+    data = request.get_json()
+    plan_text = data.get('plan', '')
+    task = data.get('task', '')
+    
+    if not plan_text:
+        return jsonify({'success': False, 'message': '请先生成工作计划'})
+    
+    import re
+    lines = plan_text.split('\n')
+    daily_plans = []
+    max_day = 0
+    
+    # 解析每天的计划内容
+    for i, line in enumerate(lines):
+        day_match = re.search(r'第\s*(\d+)\s*天', line)
+        if day_match:
+            day_num = int(day_match.group(1))
+            max_day = max(max_day, day_num)
+            
+            duration = 60
+            hour_match = re.search(r'(\d+)\s*小时', line)
+            if hour_match:
+                duration = int(hour_match.group(1)) * 60
+            
+            # 提取该行的内容作为备注
+            note_content = line.strip()
+            
+            daily_plans.append({'day': day_num, 'duration': duration, 'note': note_content})
+    
+    if not daily_plans:
+        return jsonify({'success': False, 'message': '无法解析计划'})
+    
+    added_count = 0
+    today_date = datetime.now().date()
+    
+    for plan_info in daily_plans:
+        plan_date = today_date + timedelta(days=plan_info['day'] - 1)
+        # 把AI生成的具体计划内容放入备注
+        note = f"AI工作计划 - {plan_info['note']}"
+        record = WorkRecord(user_id=current_user.id, date=plan_date, task=task or '工作计划', task_duration=plan_info['duration'], notes=note)
+        db.session.add(record)
+        added_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'added_count': added_count})
+
+# 情侣共享模式页面
+@app.route('/partner')
+@login_required
+def partner_page():
+    """情侣共享模式主页"""
+    # 检查是否已有情侣
+    partner = User.query.get(current_user.partner_id) if current_user.partner_id else None
+    return render_template('partner.html', partner=partner)
+
+# 绑定情侣 - 发起请求
+@app.route('/partner/bind', methods=['GET', 'POST'])
+@login_required
+def partner_bind():
+    """发起情侣绑定请求"""
+    if request.method == 'POST':
+        partner_username = request.form.get('username')
+        partner = User.query.filter_by(username=partner_username).first()
+        
+        if not partner:
+            flash('用户不存在！', 'error')
+            return redirect(url_for('partner_bind'))
+        
+        if partner.id == current_user.id:
+            flash('不能绑定自己！', 'error')
+            return redirect(url_for('partner_bind'))
+        
+        if current_user.partner_id:
+            flash('你已经有情侣了！', 'error')
+            return redirect(url_for('partner_page'))
+        
+        # 检查是否已有待处理的请求
+        existing_request = Friend.query.filter_by(
+            user_id=current_user.id, 
+            friend_id=partner.id, 
+            relation_type='partner',
+            status='pending'
+        ).first()
+        
+        if existing_request:
+            flash('已发送过请求，等待对方同意！', 'error')
+            return redirect(url_for('partner_page'))
+        
+        # 检查对方是否已经有情侣
+        if partner.partner_id:
+            flash('对方已经有情侣了！', 'error')
+            return redirect(url_for('partner_bind'))
+        
+        # 创建绑定请求
+        friend_request = Friend(
+            user_id=current_user.id,
+            friend_id=partner.id,
+            relation_type='partner',
+            status='pending'
+        )
+        db.session.add(friend_request)
+        db.session.commit()
+        
+        flash(f'已向 {partner.username} 发送绑定请求，等待对方同意！', 'success')
+        return redirect(url_for('partner_page'))
+    
+    return render_template('partner_bind.html')
+
+# 处理情侣绑定请求
+@app.route('/partner/request/<int:request_id>/<action>')
+@login_required
+def partner_request(request_id, action):
+    """处理情侣绑定请求（同意/拒绝）"""
+    friend_request = Friend.query.get(request_id)
+    
+    if not friend_request or friend_request.friend_id != current_user.id:
+        flash('请求不存在！', 'error')
+        return redirect(url_for('partner_page'))
+    
+    if friend_request.relation_type != 'partner':
+        flash('无效的请求！', 'error')
+        return redirect(url_for('partner_page'))
+    
+    if action == 'accept':
+        # 检查是否已有情侣
+        if current_user.partner_id:
+            flash('你已经有情侣了！', 'error')
+            return redirect(url_for('partner_page'))
+        
+        # 检查对方是否已有情侣
+        partner = User.query.get(friend_request.user_id)
+        if partner.partner_id:
+            flash('对方已经有情侣了！', 'error')
+            friend_request.status = 'rejected'
+            db.session.commit()
+            return redirect(url_for('partner_page'))
+        
+        # 双向绑定
+        current_user.partner_id = partner.id
+        partner.partner_id = current_user.id
+        
+        # 更新请求状态
+        friend_request.status = 'accepted'
+        
+        # 也添加对方的好友关系
+        existing_friend = Friend.query.filter_by(
+            user_id=friend_request.user_id,
+            friend_id=current_user.id,
+            relation_type='partner'
+        ).first()
+        
+        if not existing_friend:
+            reverse_friend = Friend(
+                user_id=friend_request.user_id,
+                friend_id=current_user.id,
+                relation_type='partner',
+                status='accepted'
+            )
+            db.session.add(reverse_friend)
+        
+        db.session.commit()
+        
+        flash(f'已同意 {partner.username} 的绑定请求！', 'success')
+    
+    elif action == 'reject':
+        friend_request.status = 'rejected'
+        db.session.commit()
+        flash('已拒绝绑定请求', 'info')
+    
+    return redirect(url_for('partner_page'))
+
+# 解绑情侣
+@app.route('/partner/unbind', methods=['POST'])
+@login_required
+def partner_unbind():
+    """解绑情侣"""
+    if not current_user.partner_id:
+        flash('你还没有绑定情侣！', 'error')
+        return redirect(url_for('partner_page'))
+    
+    partner = User.query.get(current_user.partner_id)
+    if partner:
+        partner.partner_id = None
+        # 删除相关的好友关系
+        Friend.query.filter(
+            ((Friend.user_id == current_user.id) & (Friend.friend_id == partner.id)) |
+            ((Friend.user_id == partner.id) & (Friend.friend_id == current_user.id)),
+            Friend.relation_type == 'partner'
+        ).delete()
+    
+    current_user.partner_id = None
+    db.session.commit()
+    
+    flash('已成功解绑情侣！', 'success')
+    return redirect(url_for('partner_page'))
+
+# 查看情侣的经期记录
+@app.route('/partner/periods')
+@login_required
+def partner_periods():
+    """查看情侣的经期记录"""
+    if not current_user.partner_id:
+        flash('请先绑定情侣！', 'error')
+        return redirect(url_for('partner_page'))
+    
+    partner = User.query.get(current_user.partner_id)
+    periods = Period.query.filter_by(user_id=partner.id).order_by(Period.start_date.desc()).all()
+    
+    return render_template('partner_periods.html', partner=partner, periods=periods)
+
+# 查看情侣的学习记录
+@app.route('/partner/study')
+@login_required
+def partner_study():
+    """查看情侣的学习记录"""
+    if not current_user.partner_id:
+        flash('请先绑定情侣！', 'error')
+        return redirect(url_for('partner_page'))
+    
+    partner = User.query.get(current_user.partner_id)
+    records = StudyRecord.query.filter_by(user_id=partner.id).order_by(StudyRecord.date.desc()).all()
+    
+    return render_template('partner_study.html', partner=partner, records=records)
+
+# 查看情侣的工作记录
+@app.route('/partner/work')
+@login_required
+def partner_work():
+    """查看情侣的工作记录"""
+    if not current_user.partner_id:
+        flash('请先绑定情侣！', 'error')
+        return redirect(url_for('partner_page'))
+    
+    partner = User.query.get(current_user.partner_id)
+    records = WorkRecord.query.filter_by(user_id=partner.id).order_by(WorkRecord.date.desc()).all()
+    
+    return render_template('partner_work.html', partner=partner, records=records)
+
+# API: 获取情侣的经期数据（日历用）
+@app.route('/partner/api/periods')
+@login_required
+def partner_api_periods():
+    """获取情侣的经期数据"""
+    if not current_user.partner_id:
+        return jsonify({'success': False, 'message': '请先绑定情侣'})
+    
+    partner = User.query.get(current_user.partner_id)
+    periods = Period.query.filter_by(user_id=partner.id).all()
+    
+    events = []
+    flow_colors = {'light': '#FFB6C1', 'medium': '#FF69B4', 'heavy': '#FF1493'}
+    for p in periods:
+        events.append({
+            'id': p.id,
+            'title': f'🌸 {partner.username}经期',
+            'start': p.start_date.isoformat(),
+            'end': (p.end_date + timedelta(days=1)).isoformat(),
+            'color': flow_colors.get(p.flow, '#FF69B4'),
+            'extendedProps': {
+                'flow': p.flow,
+                'pain_level': p.pain_level,
+                'symptoms': p.symptoms,
+                'notes': p.notes
+            }
+        })
+    
+    return jsonify({'success': True, 'events': events})
+
+# API: 获取情侣的学习数据
+@app.route('/partner/api/study')
+@login_required
+def partner_api_study():
+    """获取情侣的学习数据"""
+    if not current_user.partner_id:
+        return jsonify({'success': False, 'message': '请先绑定情侣'})
+    
+    partner = User.query.get(current_user.partner_id)
+    records = StudyRecord.query.filter_by(user_id=partner.id).all()
+    
+    events = []
+    for r in records:
+        events.append({
+            'id': r.id,
+            'title': f'📚 {r.subject} - {r.duration}分钟',
+            'start': r.date.isoformat(),
+            'color': '#4CAF50',
+            'extendedProps': {
+                'subject': r.subject,
+                'duration': r.duration,
+                'plan': r.plan,
+                'notes': r.notes
+            }
+        })
+    
+    return jsonify({'success': True, 'events': events})
+
+# API: 获取情侣的工作数据
+@app.route('/partner/api/work')
+@login_required
+def partner_api_work():
+    """获取情侣的工作数据"""
+    if not current_user.partner_id:
+        return jsonify({'success': False, 'message': '请先绑定情侣'})
+    
+    partner = User.query.get(current_user.partner_id)
+    records = WorkRecord.query.filter_by(user_id=partner.id).all()
+    
+    events = []
+    for r in records:
+        events.append({
+            'id': r.id,
+            'title': f'💼 {r.task or "工作"} - {r.task_duration}分钟',
+            'start': r.date.isoformat(),
+            'color': '#2196F3',
+            'extendedProps': {
+                'task': r.task,
+                'duration': r.task_duration,
+                'overtime': r.overtime,
+                'notes': r.notes
+            }
+        })
+    
+    return jsonify({'success': True, 'events': events})
+
+# ========== 社区模块路由 ==========
+
+# 话题选项
+TOPICS = {
+    'health': {'name': '经期健康', 'color': '#ff6b9d', 'icon': '💊'},
+    'study': {'name': '学习打卡', 'color': '#1890ff', 'icon': '📚'},
+    'work': {'name': '职场交流', 'color': '#fa8c16', 'icon': '💼'},
+    'mood': {'name': '心情日记', 'color': '#52c41a', 'icon': '💭'},
+    'general': {'name': '闲聊', 'color': '#722ed1', 'icon': '💬'}
+}
+
+@app.route('/community')
+@login_required
+def community():
+    """社区首页"""
+    topic_filter = request.args.get('topic', 'all')
+    
+    query = Post.query
+    
+    if topic_filter == 'following':
+        # 只看关注用户的帖子
+        following_ids = [f.following_id for f in UserFollow.query.filter_by(follower_id=current_user.id).all()]
+        following_ids.append(current_user.id)  # 也显示自己的帖子
+        query = query.filter(Post.user_id.in_(following_ids))
+    elif topic_filter != 'all':
+        query = query.filter_by(topic=topic_filter)
+    
+    posts = query.order_by(Post.created_at.desc()).limit(50).all()
+    
+    # 获取热门帖子（按点赞数）
+    hot_posts = Post.query.order_by(Post.likes_count.desc()).limit(5).all()
+    
+    return render_template('community.html', 
+                         posts=posts, 
+                         hot_posts=hot_posts,
+                         topics=TOPICS,
+                         current_topic=topic_filter,
+                         user=current_user)
+
+@app.route('/community/upload_image', methods=['POST'])
+@login_required
+def community_upload_image():
+    """单独上传图片"""
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'message': '没有图片'})
+    
+    file = request.files['image']
+    if not file or not file.filename:
+        return jsonify({'success': False, 'message': '没有选择图片'})
+    
+    if not allowed_file(file.filename):
+        return jsonify({'success': False, 'message': '不支持的图片格式'})
+    
+    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+    filename = f"{current_user.id}_{int(time.time())}.{ext}"
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    
+    return jsonify({
+        'success': True, 
+        'filename': filename,
+        'url': url_for('static', filename='uploads/' + filename)
+    })
+
+@app.route('/community/post/add', methods=['POST'])
+@login_required
+def community_add_post():
+    """发布帖子"""
+    content = request.form.get('content', '').strip()
+    if not content:
+        flash('内容不能为空', 'error')
+        return redirect(url_for('community'))
+    
+    topic = request.form.get('topic', 'general')
+    is_anonymous = request.form.get('is_anonymous') == 'on'
+    
+    # 获取图片文件名
+    images_str = request.form.get('images', '')
+    images = images_str.split(',') if images_str else []
+    images = [x for x in images if x]  # 过滤空值
+    
+    post = Post(
+        user_id=current_user.id,
+        content=content,
+        images=','.join(images) if images else '',
+        topic=topic,
+        is_anonymous=is_anonymous
+    )
+    db.session.add(post)
+    db.session.commit()
+    
+    flash('发布成功！', 'success')
+    return redirect(url_for('community'))
+
+@app.route('/community/post/<int:post_id>/like', methods=['POST'])
+@login_required
+def community_like_post(post_id):
+    """点赞帖子"""
+    post = Post.query.get_or_404(post_id)
+    
+    # 检查是否已点赞
+    existing_like = PostLike.query.filter_by(user_id=current_user.id, post_id=post_id).first()
+    
+    if existing_like:
+        db.session.delete(existing_like)
+        post.likes_count = max(0, post.likes_count - 1)
+    else:
+        like = PostLike(user_id=current_user.id, post_id=post_id)
+        db.session.add(like)
+        post.likes_count += 1
+    
+    db.session.commit()
+    return jsonify({'success': True, 'likes_count': post.likes_count})
+
+@app.route('/community/post/<int:post_id>/comment', methods=['POST'])
+@login_required
+def community_comment_post(post_id):
+    """评论帖子"""
+    content = request.form.get('content', '').strip()
+    if not content:
+        return jsonify({'success': False, 'message': '评论不能为空'})
+    
+    comment = PostComment(
+        user_id=current_user.id,
+        post_id=post_id,
+        content=content
+    )
+    db.session.add(comment)
+    
+    post = Post.query.get(post_id)
+    post.comments_count += 1
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '评论成功'})
+
+@app.route('/community/post/<int:post_id>')
+@login_required
+def community_post_detail(post_id):
+    """帖子详情"""
+    post = Post.query.get_or_404(post_id)
+    comments = PostComment.query.filter_by(post_id=post_id, parent_id=None).order_by(PostComment.created_at.desc()).all()
+    
+    return render_template('community_post.html', post=post, comments=comments, topics=TOPICS, user=current_user)
+
+@app.route('/community/post/<int:post_id>/delete', methods=['POST'])
+@login_required
+def community_delete_post(post_id):
+    """删除帖子"""
+    post = Post.query.get_or_404(post_id)
+    if post.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权删除'})
+    
+    # 删除相关点赞和评论
+    PostLike.query.filter_by(post_id=post_id).delete()
+    PostComment.query.filter_by(post_id=post_id).delete()
+    db.session.delete(post)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': '删除成功'})
+
+@app.route('/community/post/<int:post_id>/edit', methods=['POST'])
+@login_required
+def community_edit_post(post_id):
+    """编辑帖子"""
+    post = Post.query.get_or_404(post_id)
+    if post.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权修改'})
+    
+    content = request.form.get('content', '').strip()
+    if not content:
+        return jsonify({'success': False, 'message': '内容不能为空'})
+    
+    topic = request.form.get('topic', post.topic)
+    is_anonymous = request.form.get('is_anonymous') == 'on'
+    
+    post.content = content
+    post.topic = topic
+    post.is_anonymous = is_anonymous
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': '更新成功'})
+
+@app.route('/community/user/<int:user_id>')
+@login_required
+def community_user_profile(user_id):
+    """用户主页"""
+    user = User.query.get_or_404(user_id)
+    posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
+    
+    # 检查是否已关注
+    is_following = UserFollow.query.filter_by(follower_id=current_user.id, following_id=user_id).first() is not None
+    followers_count = UserFollow.query.filter_by(following_id=user_id).count()
+    following_count = UserFollow.query.filter_by(follower_id=user_id).count()
+    
+    return render_template('community_profile.html', 
+                         profile_user=user, 
+                         posts=posts,
+                         is_following=is_following,
+                         followers_count=followers_count,
+                         following_count=following_count,
+                         topics=TOPICS,
+                         user=current_user)
+
+@app.route('/community/follow/<int:user_id>', methods=['POST'])
+@login_required
+def community_follow_user(user_id):
+    """关注/取消关注用户"""
+    if user_id == current_user.id:
+        return jsonify({'success': False, 'message': '不能关注自己'})
+    
+    existing = UserFollow.query.filter_by(follower_id=current_user.id, following_id=user_id).first()
+    
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+        return jsonify({'success': True, 'following': False})
+    else:
+        follow = UserFollow(follower_id=current_user.id, following_id=user_id)
+        db.session.add(follow)
+        db.session.commit()
+        return jsonify({'success': True, 'following': True})
 
 if __name__ == '__main__':
     with app.app_context():

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑记录 - 🌸 日历记录小助手</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #ffe6f2 0%, #fff0f5 50%, #ffdae6 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(255, 182, 193, 0.3);
+        }
+        h1 {
+            color: #ff6b9d;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            color: #ff8fab;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 15px;
+            border: 3px solid #ffe6f2;
+            border-radius: 15px;
+            font-size: 16px;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #ff6b9d;
+        }
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, #ff6b9d, #ff8fab);
+            color: white;
+        }
+        .btn-back {
+            background: #666;
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .symptoms-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .symptom-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 12px;
+            background: #ffe6f2;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .symptom-label input {
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>✏️ 编辑记录</h1>
+            <form method="POST">
+                <div class="form-group">
+                    <label>🌺 开始日期</label>
+                    <input type="date" name="start_date" value="{{ period.start_date.strftime('%Y-%m-%d') }}" required>
+                </div>
+                <div class="form-group">
+                    <label>🌸 结束日期</label>
+                    <input type="date" name="end_date" value="{{ period.end_date.strftime('%Y-%m-%d') }}" required>
+                </div>
+                <div class="form-group">
+                    <label>💧 经量</label>
+                    <select name="flow">
+                        <option value="light" {% if period.flow == 'light' %}selected{% endif %}>🌸 少量</option>
+                        <option value="medium" {% if period.flow == 'medium' or not period.flow %}selected{% endif %}>💕 中等</option>
+                        <option value="heavy" {% if period.flow == 'heavy' %}selected{% endif %}>🔴 大量</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🤕 疼痛等级 (0-10): <span id="pain-value">{{ period.pain_level or 0 }}</span></label>
+                    <input type="range" name="pain_level" min="0" max="10" value="{{ period.pain_level or 0 }}" oninput="document.getElementById('pain-value').textContent = this.value" style="width:100%;">
+                    <div style="display:flex;justify-content:space-between;color:#ff8fab;font-size:0.8em;margin-top:5px;">
+                        <span>不痛</span><span>轻微</span><span>中等</span><span>剧烈</span><span>极痛</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>🩺 症状 (可多选)</label>
+                    <div class="symptoms-grid">
+                        {% set current_symptoms = (period.symptoms or '').split(',') %}
+                        <label class="symptom-label">
+                            <input type="checkbox" name="symptoms" value="腹痛" {% if '腹痛' in current_symptoms %}checked{% endif %}> 腹痛
+                        </label>
+                        <label class="symptom-label">
+                            <input type="checkbox" name="symptoms" value="腰痛" {% if '腰痛' in current_symptoms %}checked{% endif %}> 腰痛
+                        </label>
+                        <label class="symptom-label">
+                            <input type="checkbox" name="symptoms" value="头痛" {% if '头痛' in current_symptoms %}checked{% endif %}> 头痛
+                        </label>
+                        <label class="symptom-label">
+                            <input type="checkbox" name="symptoms" value="乳房胀痛" {% if '乳房胀痛' in current_symptoms %}checked{% endif %}> 乳房胀痛
+                        </label>
+                        <label class="symptom-label">
+                            <input type="checkbox" name="symptoms" value="恶心" {% if '恶心' in current_symptoms %}checked{% endif %}> 恶心
+                        </label>
+                        <label class="symptom-label">
+                            <input type="checkbox" name="symptoms" value="疲劳" {% if '疲劳' in current_symptoms %}checked{% endif %}> 疲劳
+                        </label>
+                        <label class="symptom-label">
+                            <input type="checkbox" name="symptoms" value="情绪波动" {% if '情绪波动' in current_symptoms %}checked{% endif %}> 情绪波动
+                        </label>
+                        <label class="symptom-label">
+                            <input type="checkbox" name="symptoms" value="长痘" {% if '长痘' in current_symptoms %}checked{% endif %}> 长痘
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>📋 备注</label>
+                    <textarea name="notes" rows="3" placeholder="备注信息">{{ period.notes or '' }}</textarea>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-submit">💖 保存修改</button>
+                    <a href="{{ url_for('index') }}" class="btn btn-back">← 返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

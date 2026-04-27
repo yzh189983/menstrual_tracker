@@ -305,14 +305,35 @@
 
     <div class="container">
         <!-- 导航 -->
-        <div class="nav-links" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div class="nav-links" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
             <a href="{{ url_for('index') }}" class="nav-link" style="padding: 8px 16px; background: #ff6b9d; color: white; border-radius: 20px; text-decoration: none;">🌸 月经记录</a>
             <a href="{{ url_for('study') }}" class="nav-link" style="padding: 8px 16px; background: #1890ff; color: white; border-radius: 20px; text-decoration: none;">📚 学习记录</a>
             <a href="{{ url_for('work') }}" class="nav-link" style="padding: 8px 16px; background: #fa8c16; color: white; border-radius: 20px; text-decoration: none;">💼 工作记录</a>
             <a href="{{ url_for('all_calendar') }}" class="nav-link" style="padding: 8px 16px; background: #9b59b6; color: white; border-radius: 20px; text-decoration: none;">📅 总日历</a>
             <a href="{{ url_for('chat') }}" class="nav-link" style="padding: 8px 16px; background: #52c41a; color: white; border-radius: 20px; text-decoration: none;">💬 消息</a>
+            <a href="{{ url_for('community') }}" class="nav-link" style="padding: 8px 16px; background: #722ed1; color: white; border-radius: 20px; text-decoration: none;">🌸 社区</a>
             <a href="{{ url_for('profile') }}" class="nav-link" style="padding: 8px 16px; background: #666; color: white; border-radius: 20px; text-decoration: none;">👤 个人信息</a>
+            <a href="{{ url_for('partner_page') }}" class="nav-link" style="padding: 8px 16px; background: #ff69b4; color: white; border-radius: 20px; text-decoration: none;">💑 情侣</a>
+            
+            <!-- 数据导出 -->
+            <a href="/export?format=json" class="nav-link" style="padding: 8px 16px; background: #13c2c2; color: white; border-radius: 20px; text-decoration: none;" title="导出JSON">📥 导出</a>
+            <a href="/export?format=csv" class="nav-link" style="padding: 8px 16px; background: #13c2c2; color: white; border-radius: 20px; text-decoration: none;" title="导出CSV">📊 CSV</a>
+            
+            <!-- 主题切换 -->
+            <button onclick="toggleTheme()" style="padding: 8px 16px; background: #722ed1; color: white; border: none; border-radius: 20px; cursor: pointer;">🌙 主题</button>
+            
             <a href="{{ url_for('logout') }}" class="nav-link" style="padding: 8px 16px; background: #ff4d4f; color: white; border-radius: 20px; text-decoration: none;">登出</a>
+        </div>
+        
+        <!-- 排卵期提示 -->
+        <div id="ovulation-info" style="background: linear-gradient(135deg, #fff7e6, #fffbe6); border-radius: 15px; padding: 15px; margin-bottom: 20px; border: 2px solid #faad14; display: none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <h4 style="color: #fa8c16; margin: 0;">🔔 排卵期提醒</h4>
+                    <p id="ovulation-text" style="margin: 5px 0 0 0; color: #666; font-size: 0.95em;"></p>
+                </div>
+                <span id="ovulation-badge" style="padding: 5px 12px; border-radius: 15px; font-size: 0.85em;"></span>
+            </div>
         </div>
 
         <!-- 标题 -->
@@ -340,6 +361,46 @@
                         <option value="medium" selected>💕 中等</option>
                         <option value="heavy">🔴 大量</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>🤕 疼痛等级 (0-10): <span id="pain-value">0</span></label>
+                    <input type="range" name="pain_level" min="0" max="10" value="0" oninput="document.getElementById('pain-value').textContent = this.value" style="width:100%;">
+                    <div style="display:flex;justify-content:space-between;color:#ff8fab;font-size:0.8em;margin-top:5px;">
+                        <span>不痛</span>
+                        <span>轻微</span>
+                        <span>中等</span>
+                        <span>剧烈</span>
+                        <span>极痛</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>🩺 症状 (可多选)</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+                        <label style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:#ffe6f2;border-radius:20px;cursor:pointer;">
+                            <input type="checkbox" name="symptoms" value="腹痛"> 腹痛
+                        </label>
+                        <label style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:#ffe6f2;border-radius:20px;cursor:pointer;">
+                            <input type="checkbox" name="symptoms" value="腰痛"> 腰痛
+                        </label>
+                        <label style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:#ffe6f2;border-radius:20px;cursor:pointer;">
+                            <input type="checkbox" name="symptoms" value="头痛"> 头痛
+                        </label>
+                        <label style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:#ffe6f2;border-radius:20px;cursor:pointer;">
+                            <input type="checkbox" name="symptoms" value="乳房胀痛"> 乳房胀痛
+                        </label>
+                        <label style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:#ffe6f2;border-radius:20px;cursor:pointer;">
+                            <input type="checkbox" name="symptoms" value="恶心"> 恶心
+                        </label>
+                        <label style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:#ffe6f2;border-radius:20px;cursor:pointer;">
+                            <input type="checkbox" name="symptoms" value="疲劳"> 疲劳
+                        </label>
+                        <label style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:#ffe6f2;border-radius:20px;cursor:pointer;">
+                            <input type="checkbox" name="symptoms" value="情绪波动"> 情绪波动
+                        </label>
+                        <label style="display:flex;align-items:center;gap:5px;padding:8px 12px;background:#ffe6f2;border-radius:20px;cursor:pointer;">
+                            <input type="checkbox" name="symptoms" value="长痘"> 长痘
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>📋 备注</label>
@@ -386,12 +447,21 @@
                                     {% elif record.flow == 'medium' %}💕 中等
                                     {% else %}🔴 大量{% endif %}
                                 </span>
+                                {% if record.pain_level and record.pain_level > 0 %}
+                                <span style="background:#fff7e6;padding:2px 8px;border-radius:10px;margin-left:5px;">🤕 疼痛{{ record.pain_level }}/10</span>
+                                {% endif %}
+                                {% if record.symptoms %}
+                                <span style="background:#f9f0ff;padding:2px 8px;border-radius:10px;margin-left:5px;">🩺 {{ record.symptoms }}</span>
+                                {% endif %}
                                 {% if record.notes %}
                                 <span>📝 {{ record.notes }}</span>
                                 {% endif %}
                             </div>
                         </div>
-                        <a href="/delete/{{ month }}/{{ loop.index0 }}" class="btn-delete">🗑️ 删除</a>
+                        <div style="display:flex;gap:5px;">
+                            <a href="/edit_page/{{ record.id }}" class="btn-delete" style="background:#1890ff;">✏️ 编辑</a>
+                            <a href="/delete/{{ month }}/{{ loop.index0 }}" class="btn-delete">🗑️ 删除</a>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
@@ -450,6 +520,98 @@
                     }
                 });
             }
+        });
+    </script>
+    
+    <script>
+        // 主题切换功能
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.contains('dark-theme');
+            
+            if (isDark) {
+                body.classList.remove('dark-theme');
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-theme');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        
+        // 加载主题
+        function loadTheme() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.body.classList.add('dark-theme');
+            }
+        }
+        
+        // 暗黑主题样式
+        const darkStyles = `
+            .dark-theme { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%) !important; }
+            .dark-theme .header, .dark-theme .add-card, .dark-theme .month-section, .dark-theme .record-card {
+                background: #16213e !important;
+                color: #e0e0e0 !important;
+            }
+            .dark-theme .form-group input, .dark-theme .form-group select, .dark-theme .form-group textarea {
+                background: #1a1a2e !important;
+                color: #e0e0e0 !important;
+                border-color: #4a4a6a !important;
+            }
+            .dark-theme h1, .dark-theme h2, .dark-theme .month-title, .dark-theme .record-dates {
+                color: #ff8fab !important;
+            }
+            .dark-theme .subtitle, .dark-theme .form-group label, .dark-theme .stat-badge {
+                color: #b0b0b0 !important;
+            }
+            .dark-theme .empty-text { color: #888 !important; }
+            .dark-theme .chart-container { background: #1a1a2e !important; }
+        `;
+        
+        // 注入暗黑样式
+        const styleSheet = document.createElement("style");
+        styleSheet.textContent = darkStyles;
+        document.head.appendChild(styleSheet);
+        
+        // 页面加载后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTheme();
+            
+            // 获取排卵期信息
+            fetch('/api/ovulation')
+                .then(response => response.json())
+                .then(data => {
+                    const ovulationInfo = document.getElementById('ovulation-info');
+                    const ovulationText = document.getElementById('ovulation-text');
+                    const ovulationBadge = document.getElementById('ovulation-badge');
+                    
+                    if (data.has_data) {
+                        ovulationInfo.style.display = 'block';
+                        
+                        if (data.is_ovulation_day) {
+                            ovulationText.textContent = '今天是排卵日！备孕的姐妹加油💪';
+                            ovulationBadge.textContent = '🎉 排卵日';
+                            ovulationBadge.style.background = '#ff4d4f';
+                            ovulationBadge.style.color = 'white';
+                        } else if (data.is_fertile) {
+                            ovulationText.textContent = '目前处于排卵期（' + data.ovulation_date + '），受孕几率较高';
+                            ovulationBadge.textContent = '🌟 排卵期';
+                            ovulationBadge.style.background = '#faad14';
+                            ovulationBadge.style.color = 'white';
+                        } else if (data.days_until_ovulation > 0) {
+                            ovulationText.textContent = '距离排卵日还有 ' + data.days_until_ovulation + ' 天，平均周期 ' + data.avg_cycle + ' 天';
+                            ovulationBadge.textContent = '📅 预测中';
+                            ovulationBadge.style.background = '#52c41a';
+                            ovulationBadge.style.color = 'white';
+                        } else {
+                            ovulationText.textContent = '下次经期预计 ' + data.next_period + ' 来临';
+                            ovulationBadge.textContent = '💕 经期将至';
+                            ovulationBadge.style.background = '#ff6b9d';
+                            ovulationBadge.style.color = 'white';
+                        }
+                    }
+                })
+                .catch(err => console.log('排卵期信息加载失败:', err));
         });
     </script>
 </body>

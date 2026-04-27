@@ -1,0 +1,75 @@
+<!--pages/index/index.wxml-->
+<view class="container">
+  <!-- 顶部状态栏 -->
+  <view class="status-bar">
+    <view class="status-item">
+      <image class="status-icon" src="{{isBluetoothConnected ? '/images/bluetooth-active.png' : '/images/bluetooth.png'}}"></image>
+      <text>{{isBluetoothConnected ? '已连接蓝牙' : '未连接'}}</text>
+    </view>
+  </view>
+
+  <!-- 对话区域 -->
+  <scroll-view class="chat-area" scroll-y scroll-into-view="{{scrollIntoView}}">
+    <block wx:for="{{messages}}" wx:key="index">
+      <view class="message message-{{item.type}}" id="msg-{{index}}">
+        <view class="message-avatar">
+          <image wx:if="{{item.type === 'user'}}" src="/images/user-avatar.png"></image>
+          <image wx:else src="/images/ai-avatar.png"></image>
+        </view>
+        <view class="message-content">
+          <view class="message-text">{{item.content}}</view>
+          <view class="message-time">{{item.time}}</view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 等待回复时的提示 -->
+    <view wx:if="{{isSpeaking}}" class="thinking">
+      <view class="thinking-dot"></view>
+      <view class="thinking-dot"></view>
+      <view class="thinking-dot"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 快捷指令 -->
+  <view class="quick-commands">
+    <view class="quick-btn" bindtap="quickCommand" data-command="帮我记录今天月经">记录月经</view>
+    <view class="quick-btn" bindtap="quickCommand" data-command="查看本月月经记录">查看记录</view>
+    <view class="quick-btn" bindtap="quickCommand" data-command="帮我记录学习">记录学习</view>
+    <view class="quick-btn" bindtap="quickCommand" data-command="帮我记录工作">记录工作</view>
+  </view>
+
+  <!-- 底部输入区 -->
+  <view class="input-area">
+    <input 
+      class="text-input" 
+      placeholder="输入文字..." 
+      value="{{userInput}}"
+      bindinput="onInput"
+      bindconfirm="sendMessage"
+    />
+    <button class="send-btn" bindtap="sendMessage">发送</button>
+  </view>
+
+  <!-- 语音按钮 -->
+  <view 
+    class="voice-btn {{isRecording ? 'recording' : ''}}" 
+    bindtouchstart="startRecording"
+    bindtouchend="stopRecording"
+  >
+    <image class="voice-icon" src="{{isRecording ? '/images/mic-active.png' : '/images/mic.png'}}"></image>
+    <text>{{isRecording ? '松开结束' : '按住说话'}}</text>
+  </view>
+
+  <!-- 录音动画 -->
+  <view wx:if="{{waveAnimating}}" class="wave-animation">
+    <view class="wave wave1"></view>
+    <view class="wave wave2"></view>
+    <view class="wave wave3"></view>
+  </view>
+
+  <!-- 清除记录按钮 -->
+  <view class="clear-btn" bindtap="clearMessages">
+    <text>清除记录</text>
+  </view>
+</view>
